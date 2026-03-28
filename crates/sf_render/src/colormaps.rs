@@ -1,5 +1,8 @@
-use wgpu::{Device, Texture, TextureView, TextureDescriptor, Extent3d, TextureDimension, TextureFormat, TextureUsages, Queue};
 use std::collections::HashMap;
+use wgpu::{
+    Device, Extent3d, Queue, Texture, TextureDescriptor, TextureDimension, TextureFormat,
+    TextureUsages, TextureView,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ColormapPreset {
@@ -16,8 +19,13 @@ pub struct ColormapManager {
 impl ColormapManager {
     pub fn new(device: &Device, queue: &Queue) -> Self {
         let mut textures = HashMap::new();
-        
-        for preset in [ColormapPreset::Seismic, ColormapPreset::Viridis, ColormapPreset::Magma, ColormapPreset::Gray] {
+
+        for preset in [
+            ColormapPreset::Seismic,
+            ColormapPreset::Viridis,
+            ColormapPreset::Magma,
+            ColormapPreset::Gray,
+        ] {
             let data = Self::generate_preset_data(&preset);
             let texture = device.create_texture(&TextureDescriptor {
                 label: Some(&format!("Colormap Texture {:?}", preset)),
@@ -33,7 +41,7 @@ impl ColormapManager {
                 usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
                 view_formats: &[],
             });
-            
+
             queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &texture,
@@ -53,18 +61,18 @@ impl ColormapManager {
                     depth_or_array_layers: 1,
                 },
             );
-            
+
             let view = texture.create_view(&Default::default());
             textures.insert(preset, (texture, view));
         }
-        
+
         Self { textures }
     }
 
     pub fn get_view(&self, preset: ColormapPreset) -> Option<&TextureView> {
         self.textures.get(&preset).map(|(_, view)| view)
     }
-    
+
     fn lerp_color(c1: [u8; 3], c2: [u8; 3], t: f32) -> [u8; 4] {
         [
             (c1[0] as f32 + (c2[0] as f32 - c1[0] as f32) * t) as u8,

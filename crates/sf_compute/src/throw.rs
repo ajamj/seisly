@@ -39,7 +39,8 @@ fn find_nearest_z(mesh: &Mesh, x: f32, y: f32) -> Option<f32> {
         let dx = v[0] - x;
         let dy = v[1] - y;
         let dist_sq = dx * dx + dy * dy;
-        if dist_sq < min_dist_sq && dist_sq < 100.0 { // 10 unit radius
+        if dist_sq < min_dist_sq && dist_sq < 100.0 {
+            // 10 unit radius
             min_dist_sq = dist_sq;
             nearest_z = Some(v[2]);
         }
@@ -56,11 +57,11 @@ mod tests {
     fn test_simple_throw() {
         let up_mesh = Mesh::new(
             vec![[0.0, 0.0, 100.0], [10.0, 0.0, 100.0], [0.0, 10.0, 100.0]],
-            vec![0, 1, 2]
+            vec![0, 1, 2],
         );
         let down_mesh = Mesh::new(
             vec![[0.0, 0.0, 80.0], [10.0, 0.0, 80.0], [0.0, 10.0, 80.0]],
-            vec![0, 1, 2]
+            vec![0, 1, 2],
         );
         let line = vec![[5.0, 5.0, 90.0]];
 

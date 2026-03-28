@@ -1,6 +1,6 @@
-use super::{InterpretationState, Pick};
 #[allow(unused_imports)]
-use super::{Horizon, Fault, FaultStick};
+use super::{Fault, FaultStick, Horizon};
+use super::{InterpretationState, Pick};
 use uuid::Uuid;
 
 pub trait InterpretationCommand {
@@ -48,7 +48,11 @@ pub struct DeletePickCommand {
 #[allow(dead_code)]
 impl DeletePickCommand {
     pub fn new(horizon_id: Uuid, pick: Pick, index: usize) -> Self {
-        Self { horizon_id, pick, index }
+        Self {
+            horizon_id,
+            pick,
+            index,
+        }
     }
 }
 
@@ -170,7 +174,11 @@ impl HistoryManager {
         }
     }
 
-    pub fn execute(&mut self, mut command: Box<dyn InterpretationCommand>, state: &mut InterpretationState) {
+    pub fn execute(
+        &mut self,
+        mut command: Box<dyn InterpretationCommand>,
+        state: &mut InterpretationState,
+    ) {
         command.execute(state);
         self.undo_stack.push(command);
         self.redo_stack.clear();

@@ -67,7 +67,7 @@ impl RbfInterpolator {
         let svd = cov.svd(true, true);
         let v_t = svd.v_t.ok_or("Failed to compute SVD")?;
         let v = v_t.transpose();
-        
+
         // v columns are our new basis: [U, V, N]
         // SVD sorts singular values (and thus vectors) in descending order.
         // The last vector (smallest singular value) is the normal to the best-fit plane.
@@ -76,12 +76,12 @@ impl RbfInterpolator {
         // 4. Transform points to local UVN system
         let mut points_uv = Vec::with_capacity(n);
         let mut b = DVector::zeros(n);
-        
+
         for i in 0..n {
             let p = Vector3::from_column_slice(&points[i]);
             let relative = p - centroid;
             let local = basis.transpose() * relative;
-            
+
             points_uv.push([local.x, local.y]);
             b[i] = local.z; // We interpolate the 'N' component (distance from plane)
         }
@@ -137,26 +137,26 @@ impl RbfInterpolator {
         // P = [x, y, z] - centroid
         // L = basis.T * P
         // L.z = evaluate_local(L.x, L.y)
-        
+
         // This is:
         // (x - Cx)*Nx + (y - Cy)*Ny + (z - Cz)*Nz = f((x - Cx)*Ux + (y - Cy)*Uy + (z - Cz)*Uz, (x - Cx)*Vx + (y - Cy)*Vy + (z - Cz)*Vz)
-        
+
         // For nearly horizontal planes, Nz is large, and we can solve this iteratively or assume z is close to a starting value.
         // For a vertical plane, Nz = 0, and this equation doesn't involve z on the left side.
-        
+
         // Simple heuristic: if the plane is mostly horizontal, use the old 2.5D approach (which is what evaluate_local approximates if basis ~ Identity)
         // For now, let's implement a simple version that works for "reasonable" angles.
         // A better approach for 3D is to use generate_mesh_3d.
 
         let nz = self.basis[(2, 2)];
         if nz.abs() > 0.1 {
-            // Solve iteratively or just approximate? 
-            // For now, let's keep the old behavior for evaluation if possible, 
+            // Solve iteratively or just approximate?
+            // For now, let's keep the old behavior for evaluation if possible,
             // but the internal representation is already changed.
-            
+
             // To be perfectly backward compatible with the 2.5D API, we'd need to solve the non-linear equation.
             // But if we just want it to work for "most" surfaces:
-            
+
             let mut z = self.centroid.z;
             for _ in 0..5 {
                 let p = Vector3::new(x, y, z) - self.centroid;
@@ -178,11 +178,7 @@ impl RbfInterpolator {
 
     /// Generate a regular grid mesh from the interpolator.
     /// This version uses the local coordinate system to support arbitrary orientations.
-    pub fn generate_mesh_3d(
-        &self,
-        steps_u: usize,
-        steps_v: usize,
-    ) -> Mesh {
+    pub fn generate_mesh_3d(&self, steps_u: usize, steps_v: usize) -> Mesh {
         let mut min_u = f32::MAX;
         let mut max_u = f32::MIN;
         let mut min_v = f32::MAX;
@@ -198,21 +194,31 @@ impl RbfInterpolator {
         // Add some padding
         let du = (max_u - min_u) * 0.1;
         let dv = (max_v - min_v) * 0.1;
-        min_u -= du; max_u += du;
-        min_v -= dv; max_v += dv;
+        min_u -= du;
+        max_u += du;
+        min_v -= dv;
+        max_v += dv;
 
         let mut vertices = Vec::with_capacity(steps_u * steps_v);
         let mut indices = Vec::new();
 
-        let step_u = if steps_u > 1 { (max_u - min_u) / (steps_u - 1) as f32 } else { 0.0 };
-        let step_v = if steps_v > 1 { (max_v - min_v) / (steps_v - 1) as f32 } else { 0.0 };
+        let step_u = if steps_u > 1 {
+            (max_u - min_u) / (steps_u - 1) as f32
+        } else {
+            0.0
+        };
+        let step_v = if steps_v > 1 {
+            (max_v - min_v) / (steps_v - 1) as f32
+        } else {
+            0.0
+        };
 
         for j in 0..steps_v {
             let v = min_v + j as f32 * step_v;
             for i in 0..steps_u {
                 let u = min_u + i as f32 * step_u;
                 let n = self.evaluate_local(u, v);
-                
+
                 // Transform back to global coordinates
                 let local = Vector3::new(u, v, n);
                 let global = self.basis * local + self.centroid;
@@ -227,8 +233,12 @@ impl RbfInterpolator {
                 let p2 = ((j + 1) * steps_u + i) as u32;
                 let p3 = ((j + 1) * steps_u + i + 1) as u32;
 
-                indices.push(p0); indices.push(p1); indices.push(p2);
-                indices.push(p1); indices.push(p3); indices.push(p2);
+                indices.push(p0);
+                indices.push(p1);
+                indices.push(p2);
+                indices.push(p1);
+                indices.push(p3);
+                indices.push(p2);
             }
         }
 
@@ -249,12 +259,20 @@ impl RbfInterpolator {
     ) -> Mesh {
         // For backward compatibility, we still implement this.
         // But if it's a vertical plane, it will still struggle because evaluate(x, y) is limited.
-        
+
         let mut vertices = Vec::with_capacity(steps_x * steps_y);
         let mut indices = Vec::new();
 
-        let dx = if steps_x > 1 { (max_x - min_x) / (steps_x - 1) as f32 } else { 0.0 };
-        let dy = if steps_y > 1 { (max_y - min_y) / (steps_y - 1) as f32 } else { 0.0 };
+        let dx = if steps_x > 1 {
+            (max_x - min_x) / (steps_x - 1) as f32
+        } else {
+            0.0
+        };
+        let dy = if steps_y > 1 {
+            (max_y - min_y) / (steps_y - 1) as f32
+        } else {
+            0.0
+        };
 
         for j in 0..steps_y {
             let y = min_y + j as f32 * dy;
@@ -272,8 +290,12 @@ impl RbfInterpolator {
                 let p2 = ((j + 1) * steps_x + i) as u32;
                 let p3 = ((j + 1) * steps_x + i + 1) as u32;
 
-                indices.push(p0); indices.push(p1); indices.push(p2);
-                indices.push(p1); indices.push(p3); indices.push(p2);
+                indices.push(p0);
+                indices.push(p1);
+                indices.push(p2);
+                indices.push(p1);
+                indices.push(p3);
+                indices.push(p2);
             }
         }
 
@@ -325,17 +347,24 @@ mod tests {
         ];
 
         let interpolator = RbfInterpolator::new(&points, RbfType::ThinPlateSpline);
-        assert!(interpolator.is_ok(), "Should handle vertical planes via PCA/Orientation");
-        
+        assert!(
+            interpolator.is_ok(),
+            "Should handle vertical planes via PCA/Orientation"
+        );
+
         let interpolator = interpolator.unwrap();
-        
+
         // Use generate_mesh_3d for vertical planes
         let mesh = interpolator.generate_mesh_3d(2, 2);
         assert_eq!(mesh.vertices.len(), 4);
-        
+
         // All vertices should have x close to 1.0
         for v in &mesh.vertices {
-            assert!((v[0] - 1.0).abs() < 1e-3, "Vertex x coordinate should be 1.0, got {}", v[0]);
+            assert!(
+                (v[0] - 1.0).abs() < 1e-3,
+                "Vertex x coordinate should be 1.0, got {}",
+                v[0]
+            );
         }
     }
 

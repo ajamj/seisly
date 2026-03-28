@@ -1,7 +1,7 @@
 //! Point rendering utilities
 
-use wgpu::{Device, Buffer, BufferUsages};
 use wgpu::util::DeviceExt;
+use wgpu::{Buffer, BufferUsages, Device};
 
 /// GPU point renderer for picks
 pub struct PointRenderer {
@@ -12,32 +12,29 @@ pub struct PointRenderer {
 
 impl PointRenderer {
     pub fn new(device: &Device, points: &[[f32; 3]], color: [f32; 3]) -> Self {
-        let vertex_data: Vec<f32> = points
-            .iter()
-            .flat_map(|p| p.iter().copied())
-            .collect();
-        
+        let vertex_data: Vec<f32> = points.iter().flat_map(|p| p.iter().copied()).collect();
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Point Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertex_data),
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
         });
-        
+
         Self {
             vertex_buffer,
             vertex_count: points.len() as u32,
             color,
         }
     }
-    
+
     pub fn vertex_count(&self) -> u32 {
         self.vertex_count
     }
-    
+
     pub fn vertex_buffer(&self) -> &Buffer {
         &self.vertex_buffer
     }
-    
+
     pub fn color(&self) -> [f32; 3] {
         self.color
     }

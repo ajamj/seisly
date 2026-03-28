@@ -1,7 +1,11 @@
 //! Core renderer logic
 
-use wgpu::{Device, RenderPipeline, PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource, ColorTargetState, ColorWrites, FragmentState, VertexState, MultisampleState, PrimitiveState, PrimitiveTopology, RenderPass};
 use crate::Scene;
+use wgpu::{
+    ColorTargetState, ColorWrites, Device, FragmentState, MultisampleState,
+    PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPass, RenderPipeline,
+    ShaderModuleDescriptor, ShaderSource, VertexState,
+};
 
 /// Main renderer for 3D scenes
 pub struct Renderer {
@@ -9,7 +13,7 @@ pub struct Renderer {
     #[allow(dead_code)] // Reserved for RGB blending feature
     rgb_pipeline: RenderPipeline,
     pub rgb_bind_group_layout: wgpu::BindGroupLayout,
-    
+
     // Volumetric rendering
     pub volumetric_pipeline: RenderPipeline,
     pub volumetric_bind_group_layout: wgpu::BindGroupLayout,
@@ -70,62 +74,63 @@ impl Renderer {
             source: ShaderSource::Wgsl(include_str!("shaders/rgb_blend.wgsl").into()),
         });
 
-        let rgb_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                // Red channel
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+        let rgb_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    // Red channel
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                // Green channel
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                // Blue channel
-                wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    // Green channel
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 5,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-            label: Some("rgb_bind_group_layout"),
-        });
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    // Blue channel
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 5,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("rgb_bind_group_layout"),
+            });
 
         let rgb_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("RGB Pipeline Layout"),
@@ -139,24 +144,22 @@ impl Renderer {
             vertex: VertexState {
                 module: &rgb_shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    wgpu::VertexBufferLayout {
-                        array_stride: 20, // 5 * 4 bytes
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &[
-                            wgpu::VertexAttribute {
-                                offset: 0,
-                                shader_location: 0,
-                                format: wgpu::VertexFormat::Float32x3,
-                            },
-                            wgpu::VertexAttribute {
-                                offset: 12,
-                                shader_location: 1,
-                                format: wgpu::VertexFormat::Float32x2,
-                            },
-                        ],
-                    }
-                ],
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 20, // 5 * 4 bytes
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                        wgpu::VertexAttribute {
+                            offset: 12,
+                            shader_location: 1,
+                            format: wgpu::VertexFormat::Float32x2,
+                        },
+                    ],
+                }],
             },
             fragment: Some(FragmentState {
                 module: &rgb_shader,
@@ -191,49 +194,50 @@ impl Renderer {
             source: ShaderSource::Wgsl(include_str!("shaders/volumetric.wgsl").into()),
         });
 
-        let volumetric_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                // 3D Volume Texture
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D3,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+        let volumetric_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[
+                    // 3D Volume Texture
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D3,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                // 1D Colormap Texture
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        view_dimension: wgpu::TextureViewDimension::D1,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 3,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-            label: Some("volumetric_bind_group_layout"),
-        });
+                    // 1D Colormap Texture
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: wgpu::TextureViewDimension::D1,
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("volumetric_bind_group_layout"),
+            });
 
-        let volumetric_uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let volumetric_uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -242,14 +246,16 @@ impl Renderer {
                         min_binding_size: None,
                     },
                     count: None,
-                },
-            ],
-            label: Some("volumetric_uniform_bind_group_layout"),
-        });
+                }],
+                label: Some("volumetric_uniform_bind_group_layout"),
+            });
 
         let volumetric_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Volumetric Pipeline Layout"),
-            bind_group_layouts: &[&volumetric_bind_group_layout, &volumetric_uniform_bind_group_layout],
+            bind_group_layouts: &[
+                &volumetric_bind_group_layout,
+                &volumetric_uniform_bind_group_layout,
+            ],
             push_constant_ranges: &[],
         });
 
@@ -259,24 +265,22 @@ impl Renderer {
             vertex: VertexState {
                 module: &volumetric_shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    wgpu::VertexBufferLayout {
-                        array_stride: 24, // 6 * 4 bytes
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &[
-                            wgpu::VertexAttribute {
-                                offset: 0,
-                                shader_location: 0,
-                                format: wgpu::VertexFormat::Float32x3,
-                            },
-                            wgpu::VertexAttribute {
-                                offset: 12,
-                                shader_location: 1,
-                                format: wgpu::VertexFormat::Float32x3,
-                            },
-                        ],
-                    }
-                ],
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 24, // 6 * 4 bytes
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                        wgpu::VertexAttribute {
+                            offset: 12,
+                            shader_location: 1,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                    ],
+                }],
             },
             fragment: Some(FragmentState {
                 module: &volumetric_shader,
@@ -305,9 +309,9 @@ impl Renderer {
             multiview: None,
         });
 
-        Self { 
-            pipeline, 
-            rgb_pipeline, 
+        Self {
+            pipeline,
+            rgb_pipeline,
             rgb_bind_group_layout,
             volumetric_pipeline,
             volumetric_bind_group_layout,
@@ -328,7 +332,7 @@ impl Renderer {
             height,
             depth_or_array_layers: depth,
         };
-        
+
         let mip_level_count = (width.max(height).max(depth) as f32).log2().floor() as u32 + 1;
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -367,16 +371,23 @@ impl Renderer {
         (texture, view)
     }
 
-    pub fn render<'a>(&'a self, render_pass: &mut RenderPass<'a>, scene: &'a Scene, camera_pos: [f32; 3]) {
+    pub fn render<'a>(
+        &'a self,
+        render_pass: &mut RenderPass<'a>,
+        scene: &'a Scene,
+        camera_pos: [f32; 3],
+    ) {
         render_pass.set_pipeline(&self.pipeline);
-        
+
         // Basic depth sorting for transparent meshes: back-to-front
         let mut sorted_meshes: Vec<_> = scene.meshes.iter().collect();
         sorted_meshes.sort_by(|a, b| {
             let dist_a = dist_sq(camera_pos, a.center);
             let dist_b = dist_sq(camera_pos, b.center);
             // Reverse sort: furthest first (back-to-front)
-            dist_b.partial_cmp(&dist_a).unwrap_or(std::cmp::Ordering::Equal)
+            dist_b
+                .partial_cmp(&dist_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         for mesh in sorted_meshes {

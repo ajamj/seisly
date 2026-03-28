@@ -1,9 +1,9 @@
-mod app;
-mod widgets;
 mod ai_client;
+mod app;
 mod interpretation;
-mod ui_styles;
 mod project;
+mod ui_styles;
+mod widgets;
 use app::StrataForgeApp;
 
 fn main() -> eframe::Result<()> {

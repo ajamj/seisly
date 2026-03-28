@@ -154,7 +154,7 @@ impl ThemeManager {
     pub fn icon(&self) -> &'static str {
         match self.current_theme {
             UiTheme::Dark => "☀",  // Sun icon for light mode
-            UiTheme::Light => "☾",  // Moon icon for dark mode
+            UiTheme::Light => "☾", // Moon icon for dark mode
         }
     }
 }

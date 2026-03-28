@@ -2,8 +2,8 @@
 //!
 //! Provides UI for defining and editing velocity models for time-to-depth conversion.
 
-use eframe::egui;
 use crate::interpretation::VelocityState;
+use eframe::egui;
 
 /// Velocity model type for UI selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,20 +47,29 @@ impl VelocityPanel {
         // Model type selector
         ui.horizontal(|ui| {
             ui.label("Model Type:");
-            ui.selectable_value(&mut self.model_type, VelocityModelType::Constant, "Constant");
-            ui.selectable_value(&mut self.model_type, VelocityModelType::Gradient, "Gradient");
+            ui.selectable_value(
+                &mut self.model_type,
+                VelocityModelType::Constant,
+                "Constant",
+            );
+            ui.selectable_value(
+                &mut self.model_type,
+                VelocityModelType::Gradient,
+                "Gradient",
+            );
         });
 
         ui.separator();
 
         // Parameter inputs
         ui.label("Parameters:");
-        
+
         // V0 input
         ui.horizontal(|ui| {
             ui.label("V0 (m/s):");
-            if ui.text_edit_singleline(&mut self.v0_buffer).lost_focus() 
-                && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+            if ui.text_edit_singleline(&mut self.v0_buffer).lost_focus()
+                && ui.input(|i| i.key_pressed(egui::Key::Enter))
+            {
                 if let Ok(v0) = self.v0_buffer.parse::<f32>() {
                     velocity.model.v0 = v0;
                 }
@@ -71,8 +80,9 @@ impl VelocityPanel {
         if self.model_type == VelocityModelType::Gradient {
             ui.horizontal(|ui| {
                 ui.label("k (1/s):");
-                if ui.text_edit_singleline(&mut self.k_buffer).lost_focus() 
-                    && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                if ui.text_edit_singleline(&mut self.k_buffer).lost_focus()
+                    && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                {
                     if let Ok(k) = self.k_buffer.parse::<f32>() {
                         velocity.model.k = k;
                     }
@@ -84,7 +94,7 @@ impl VelocityPanel {
 
         // Preview table
         ui.label("Velocity Preview:");
-        
+
         egui::Grid::new("velocity_preview")
             .num_columns(2)
             .spacing([40.0, 4.0])
@@ -114,7 +124,7 @@ impl VelocityPanel {
         if velocity.is_depth_mode {
             ui.colored_label(
                 egui::Color32::from_rgb(0, 180, 0),
-                "✓ Depth Mode Active - Data displayed in depth domain"
+                "✓ Depth Mode Active - Data displayed in depth domain",
             );
         } else {
             ui.label("Time Mode - Data displayed in time domain (TWT)");

@@ -1,15 +1,17 @@
 use eframe::egui;
 use uuid::Uuid;
 
-use crate::widgets::viewport::ViewportWidget;
+use crate::interpretation::{
+    Fault, HistoryManager, Horizon, InterpretationState, PickingMode, VelocityState, WellState,
+};
+use crate::ui_styles::{self, ThemeManager, UiTheme};
 use crate::widgets::crossplot::CrossPlotWidget;
 use crate::widgets::fault_properties_panel::FaultPropertiesPanel;
 use crate::widgets::horizon_properties_panel::HorizonPropertiesPanel;
 use crate::widgets::velocity_panel::VelocityPanel;
+use crate::widgets::viewport::ViewportWidget;
 use crate::widgets::well_panel::WellPanel;
-use crate::interpretation::{InterpretationState, Horizon, Fault, PickingMode, VelocityState, HistoryManager, WellState};
-use crate::ui_styles::{self, UiTheme, ThemeManager};
-use sf_compute::seismic::{SeismicVolume, InMemoryProvider};
+use sf_compute::seismic::{InMemoryProvider, SeismicVolume};
 use sf_storage::project::SeismicVolumeEntry;
 
 pub struct VisualSettings {
@@ -57,7 +59,7 @@ impl StrataForgeApp {
         let theme_manager = ThemeManager::new();
         // Apply theme
         ui_styles::apply_theme(&cc.egui_ctx, theme_manager.current_theme);
-        
+
         egui_extras::install_image_loaders(&cc.egui_ctx);
         let mut interpretation = InterpretationState::new();
 
@@ -87,8 +89,12 @@ impl StrataForgeApp {
             for j in 0..501 {
                 let idx = (i * 501 + j) * sample_count + 250;
                 data[idx] = 1.0;
-                if idx > 0 { data[idx-1] = 0.5; }
-                if idx < data.len() - 1 { data[idx+1] = 0.5; }
+                if idx > 0 {
+                    data[idx - 1] = 0.5;
+                }
+                if idx < data.len() - 1 {
+                    data[idx + 1] = 0.5;
+                }
             }
         }
 
@@ -103,15 +109,13 @@ impl StrataForgeApp {
         let mut viewport = ViewportWidget::new();
         viewport.target_format = target_format;
 
-        let seismic_volumes = vec![
-            SeismicVolumeEntry {
-                id: Uuid::new_v4().to_string(),
-                name: "Full Stack".to_string(),
-                path: "seismic/full_stack.segy".to_string(),
-                is_visible: true,
-                channel_assignment: 0,
-            },
-        ];
+        let seismic_volumes = vec![SeismicVolumeEntry {
+            id: Uuid::new_v4().to_string(),
+            name: "Full Stack".to_string(),
+            path: "seismic/full_stack.segy".to_string(),
+            is_visible: true,
+            channel_assignment: 0,
+        }];
 
         Self {
             name: "MyField".to_owned(),
@@ -156,7 +160,7 @@ impl StrataForgeApp {
             if p1.len() >= 3 && p2.len() >= 3 {
                 if let (Ok(interp1), Ok(interp2)) = (
                     RbfInterpolator::new(&p1, RbfType::ThinPlateSpline),
-                    RbfInterpolator::new(&p2, RbfType::ThinPlateSpline)
+                    RbfInterpolator::new(&p2, RbfType::ThinPlateSpline),
                 ) {
                     // Find common bounds
                     let mut min_x = f32::MAX;
@@ -172,11 +176,8 @@ impl StrataForgeApp {
                     }
 
                     let engine = VolumetricEngine::new();
-                    let vol = engine.calculate_volume(
-                        &interp1, &interp2,
-                        min_x, max_x, min_y, max_y,
-                        50, 50
-                    );
+                    let vol = engine
+                        .calculate_volume(&interp1, &interp2, min_x, max_x, min_y, max_y, 50, 50);
                     self.volumetric_result = Some(vol);
                 }
             }
@@ -185,9 +186,9 @@ impl StrataForgeApp {
 
     #[allow(dead_code)] // Export feature - used via UI buttons
     fn export_active_horizon(&self, format: &str) {
-        use sf_io::export::{SurfaceExporter, xyz::XyzExporter};
-        use std::io::Write;
+        use sf_io::export::{xyz::XyzExporter, SurfaceExporter};
         use std::fs::File;
+        use std::io::Write;
 
         if let Some(horizon) = self.interpretation.active_horizon() {
             // Export picks as XYZ or JSON
@@ -197,13 +198,17 @@ impl StrataForgeApp {
                     let mut file = File::create(&filename);
                     if let Ok(ref mut f) = file {
                         for pick in &horizon.picks {
-                            let _ = writeln!(f, "{:.2} {:.2} {:.2}", pick.position[0], pick.position[1], pick.position[2]);
+                            let _ = writeln!(
+                                f,
+                                "{:.2} {:.2} {:.2}",
+                                pick.position[0], pick.position[1], pick.position[2]
+                            );
                         }
                         Ok(())
                     } else {
                         Err(anyhow::anyhow!("Failed to create file: {}", filename))
                     }
-                },
+                }
                 "json" => {
                     let filename = format!("{}_picks.json", horizon.name.replace(" ", "_"));
                     // Simple JSON export without serde_json dependency
@@ -212,22 +217,37 @@ impl StrataForgeApp {
                         let _ = writeln!(f, "[");
                         for (i, pick) in horizon.picks.iter().enumerate() {
                             let comma = if i < horizon.picks.len() - 1 { "," } else { "" };
-                            let _ = writeln!(f, "  {{\"id\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}]}}{}", pick.id, pick.position[0], pick.position[1], pick.position[2], comma);
+                            let _ = writeln!(
+                                f,
+                                "  {{\"id\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}]}}{}",
+                                pick.id,
+                                pick.position[0],
+                                pick.position[1],
+                                pick.position[2],
+                                comma
+                            );
                         }
                         let _ = writeln!(f, "]");
                         Ok(())
                     } else {
                         Err(anyhow::anyhow!("Failed to create file: {}", filename))
                     }
-                },
+                }
                 "mesh_xyz" => {
                     if let Some(mesh) = horizon.meshes.first() {
-                        XyzExporter.export_surface(mesh, std::path::Path::new(&format!("{}_mesh.xyz", horizon.name.replace(" ", "_"))))
+                        XyzExporter
+                            .export_surface(
+                                mesh,
+                                std::path::Path::new(&format!(
+                                    "{}_mesh.xyz",
+                                    horizon.name.replace(" ", "_")
+                                )),
+                            )
                             .map_err(|e| anyhow::anyhow!("Mesh export failed: {}", e))
                     } else {
                         Err(anyhow::anyhow!("No mesh to export"))
                     }
-                },
+                }
                 _ => Ok(()),
             };
 
@@ -245,19 +265,23 @@ impl eframe::App for StrataForgeApp {
         // Top Ribbon - Modern toolbar
         egui::TopBottomPanel::top("top_ribbon").show(ctx, |ui| {
             ui.add_space(4.0);
-            
+
             // First row - App title and menu
             ui.horizontal(|ui| {
                 ui.heading("🛢 StrataForge");
                 ui.separator();
-                
+
                 // Quick access toolbar
                 if ui.button("💾").clicked() { /* Save */ }
-                if ui.button("↶").clicked() { self.history.undo(&mut self.interpretation); }
-                if ui.button("↷").clicked() { self.history.redo(&mut self.interpretation); }
-                
+                if ui.button("↶").clicked() {
+                    self.history.undo(&mut self.interpretation);
+                }
+                if ui.button("↷").clicked() {
+                    self.history.redo(&mut self.interpretation);
+                }
+
                 ui.separator();
-                
+
                 // Context-aware tools
                 if self.interpretation.active_horizon_id.is_some() {
                     ui.label("🌈 Horizon");
@@ -266,16 +290,16 @@ impl eframe::App for StrataForgeApp {
                 } else {
                     ui.label("📊 Seismic");
                 }
-                
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui.button("❓").clicked() { /* Help */ }
                 });
             });
-            
+
             ui.add_space(4.0);
             ui.separator();
             ui.add_space(4.0);
-            
+
             // Second row - Tools
             ui.horizontal(|ui| {
                 // File operations
@@ -286,35 +310,63 @@ impl eframe::App for StrataForgeApp {
                         if ui.button("💾 Save").clicked() { /* Save */ }
                     });
                 });
-                
+
                 ui.separator();
-                
+
                 // Interpretation tools
                 ui.group(|ui| {
                     ui.label("Picking:");
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::None, "⊘");
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Seed, "🌱");
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Manual, "✏️");
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::AutoTrack, "🔄");
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::SketchFault, "⚡");
+                    ui.selectable_value(
+                        &mut self.interpretation.picking_mode,
+                        PickingMode::None,
+                        "⊘",
+                    );
+                    ui.selectable_value(
+                        &mut self.interpretation.picking_mode,
+                        PickingMode::Seed,
+                        "🌱",
+                    );
+                    ui.selectable_value(
+                        &mut self.interpretation.picking_mode,
+                        PickingMode::Manual,
+                        "✏️",
+                    );
+                    ui.selectable_value(
+                        &mut self.interpretation.picking_mode,
+                        PickingMode::AutoTrack,
+                        "🔄",
+                    );
+                    ui.selectable_value(
+                        &mut self.interpretation.picking_mode,
+                        PickingMode::SketchFault,
+                        "⚡",
+                    );
                 });
-                
+
                 ui.separator();
-                
+
                 // View controls
                 ui.group(|ui| {
                     ui.checkbox(&mut self.velocity.is_depth_mode, "📏 Depth");
                     if self.velocity.is_depth_mode {
                         ui.horizontal(|ui| {
                             ui.label("V0:");
-                            ui.add(egui::DragValue::new(&mut self.velocity.model.v0).speed(100.0).prefix("m/s"));
+                            ui.add(
+                                egui::DragValue::new(&mut self.velocity.model.v0)
+                                    .speed(100.0)
+                                    .prefix("m/s"),
+                            );
                             ui.label("k:");
-                            ui.add(egui::DragValue::new(&mut self.velocity.model.k).speed(0.01).prefix("1/s"));
+                            ui.add(
+                                egui::DragValue::new(&mut self.velocity.model.k)
+                                    .speed(0.01)
+                                    .prefix("1/s"),
+                            );
                         });
                     }
                 });
             });
-            
+
             ui.add_space(4.0);
         });
 
@@ -340,22 +392,28 @@ impl eframe::App for StrataForgeApp {
             ui.collapsing("Horizons", |ui| {
                 if ui.button("Add Horizon").clicked() {
                     let name = format!("Horizon {}", self.interpretation.horizons.len() + 1);
-                    self.interpretation.add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
+                    self.interpretation
+                        .add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
                 }
                 ui.separator();
-                
+
                 let modifier = ui.input(|i| i.modifiers.command || i.modifiers.shift);
-                
+
                 for horizon in &mut self.interpretation.horizons {
                     ui.horizontal(|ui| {
                         let is_active = self.interpretation.active_horizon_id == Some(horizon.id);
-                        let is_selected = self.interpretation.selected_horizon_ids.contains(&horizon.id);
-                        
+                        let is_selected = self
+                            .interpretation
+                            .selected_horizon_ids
+                            .contains(&horizon.id);
+
                         let response = ui.selectable_label(is_active || is_selected, &horizon.name);
                         if response.clicked() {
                             if modifier {
                                 if is_selected {
-                                    self.interpretation.selected_horizon_ids.retain(|&id| id != horizon.id);
+                                    self.interpretation
+                                        .selected_horizon_ids
+                                        .retain(|&id| id != horizon.id);
                                 } else {
                                     self.interpretation.selected_horizon_ids.push(horizon.id);
                                 }
@@ -373,7 +431,8 @@ impl eframe::App for StrataForgeApp {
             ui.collapsing("Faults", |ui| {
                 if ui.button("Add Fault").clicked() {
                     let name = format!("Fault {}", self.interpretation.faults.len() + 1);
-                    self.interpretation.add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
+                    self.interpretation
+                        .add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
                 }
                 ui.separator();
 
@@ -382,13 +441,16 @@ impl eframe::App for StrataForgeApp {
                 for fault in &mut self.interpretation.faults {
                     ui.horizontal(|ui| {
                         let is_active = self.interpretation.active_fault_id == Some(fault.id);
-                        let is_selected = self.interpretation.selected_fault_ids.contains(&fault.id);
-                        
+                        let is_selected =
+                            self.interpretation.selected_fault_ids.contains(&fault.id);
+
                         let response = ui.selectable_label(is_active || is_selected, &fault.name);
                         if response.clicked() {
                             if modifier {
                                 if is_selected {
-                                    self.interpretation.selected_fault_ids.retain(|&id| id != fault.id);
+                                    self.interpretation
+                                        .selected_fault_ids
+                                        .retain(|&id| id != fault.id);
                                 } else {
                                     self.interpretation.selected_fault_ids.push(fault.id);
                                 }
@@ -431,12 +493,16 @@ impl eframe::App for StrataForgeApp {
                                 (horizon.color[2] * 255.0) as u8,
                                 255,
                             );
-                            let color_rect = ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
+                            let color_rect =
+                                ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
                             ui.painter().rect_filled(color_rect.rect, 4.0, color);
                         });
                         ui.label(format!("Picks: {}", horizon.picks.len()));
-                        ui.label(format!("Visible: {}", if horizon.is_visible { "Yes" } else { "No" }));
-                        
+                        ui.label(format!(
+                            "Visible: {}",
+                            if horizon.is_visible { "Yes" } else { "No" }
+                        ));
+
                         ui.separator();
                         ui.horizontal(|ui| {
                             if ui.button("📤 Export XYZ").clicked() {
@@ -458,11 +524,15 @@ impl eframe::App for StrataForgeApp {
                                 (fault.color[2] * 255.0) as u8,
                                 255,
                             );
-                            let color_rect = ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
+                            let color_rect =
+                                ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
                             ui.painter().rect_filled(color_rect.rect, 4.0, color);
                         });
                         ui.label(format!("Sticks: {}", fault.sticks.len()));
-                        ui.label(format!("Visible: {}", if fault.is_visible { "Yes" } else { "No" }));
+                        ui.label(format!(
+                            "Visible: {}",
+                            if fault.is_visible { "Yes" } else { "No" }
+                        ));
                     });
                 } else {
                     ui.label("Select a horizon or fault to view properties");
@@ -482,21 +552,25 @@ impl eframe::App for StrataForgeApp {
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
                             ui.label("V0:");
-                            ui.add(egui::DragValue::new(&mut self.velocity.model.v0)
-                                .speed(100.0)
-                                .prefix("m/s"));
+                            ui.add(
+                                egui::DragValue::new(&mut self.velocity.model.v0)
+                                    .speed(100.0)
+                                    .prefix("m/s"),
+                            );
                         });
                         ui.horizontal(|ui| {
                             ui.label("k:");
-                            ui.add(egui::DragValue::new(&mut self.velocity.model.k)
-                                .speed(0.01)
-                                .prefix("1/s"));
+                            ui.add(
+                                egui::DragValue::new(&mut self.velocity.model.k)
+                                    .speed(0.01)
+                                    .prefix("1/s"),
+                            );
                         });
-                        
+
                         ui.add_space(8.0);
                         ui.separator();
                         ui.label("Velocity Preview:");
-                        
+
                         egui::Grid::new("velocity_preview")
                             .num_columns(2)
                             .spacing([40.0, 4.0])
@@ -508,7 +582,8 @@ impl eframe::App for StrataForgeApp {
 
                                 let depths = [0.0, 500.0, 1000.0, 2000.0];
                                 for depth in depths {
-                                    let velocity = self.velocity.model.v0 + self.velocity.model.k * depth;
+                                    let velocity =
+                                        self.velocity.model.v0 + self.velocity.model.k * depth;
                                     ui.label(format!("{:.0}", depth));
                                     ui.label(format!("{:.0}", velocity));
                                     ui.end_row();
@@ -526,15 +601,27 @@ impl eframe::App for StrataForgeApp {
                     ui.add(egui::Slider::new(&mut self.visuals.gain, 0.1..=10.0).text("Gain"));
                     ui.add(egui::Slider::new(&mut self.visuals.clip, 0.0..=1.0).text("Clip"));
                     ui.add(egui::Slider::new(&mut self.visuals.opacity, 0.0..=1.0).text("Opacity"));
-                    
+
                     ui.separator();
                     ui.label("Colormap:");
                     egui::ComboBox::from_label("")
                         .selected_text(&self.visuals.colormap)
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.visuals.colormap, "Seismic".to_string(), "🌈 Seismic");
-                            ui.selectable_value(&mut self.visuals.colormap, "Viridis".to_string(), "🟢 Viridis");
-                            ui.selectable_value(&mut self.visuals.colormap, "Magma".to_string(), "🔴 Magma");
+                            ui.selectable_value(
+                                &mut self.visuals.colormap,
+                                "Seismic".to_string(),
+                                "🌈 Seismic",
+                            );
+                            ui.selectable_value(
+                                &mut self.visuals.colormap,
+                                "Viridis".to_string(),
+                                "🟢 Viridis",
+                            );
+                            ui.selectable_value(
+                                &mut self.visuals.colormap,
+                                "Magma".to_string(),
+                                "🔴 Magma",
+                            );
                         });
                 });
 
@@ -578,14 +665,24 @@ impl eframe::App for StrataForgeApp {
                             600000.0,
                             75.0,
                         );
-                        well.add_top("Top Sand".to_string(), 1200.0, "TOP".to_string(), [1.0, 0.8, 0.0, 1.0]);
+                        well.add_top(
+                            "Top Sand".to_string(),
+                            1200.0,
+                            "TOP".to_string(),
+                            [1.0, 0.8, 0.0, 1.0],
+                        );
                         self.wells.add_well(well);
                     }
                 });
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.viewport.ui(ui, &mut self.interpretation, &self.velocity, self.volume.as_ref());
+            self.viewport.ui(
+                ui,
+                &mut self.interpretation,
+                &self.velocity,
+                self.volume.as_ref(),
+            );
         });
 
         // Bottom Panel - Well Logs (collapsible)
@@ -616,16 +713,16 @@ impl eframe::App for StrataForgeApp {
                                 // Select well
                             }
                         }
-                        
+
                         ui.separator();
                         ui.label("Log:");
                         ui.selectable_label(true, "GR");
                         ui.selectable_label(false, "DT");
                         ui.selectable_label(false, "RHOB");
                     });
-                    
+
                     ui.add_space(8.0);
-                    
+
                     // Placeholder for log plot
                     ui.label("📈 Log plot area - to be implemented");
                     ui.label("Select a well and log to display");
@@ -640,20 +737,22 @@ impl eframe::App for StrataForgeApp {
                 // Coordinates
                 ui.label("📍 Position:");
                 ui.monospace("X: 250.5  Y: 312.8  Z: 1523m");
-                
+
                 ui.separator();
-                
+
                 // TWT
                 ui.label("⏱ TWT:");
                 ui.monospace("1.250s");
-                
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Auto-tracking progress
                     if let Some(progress) = self.viewport.tracking_progress {
                         ui.label("🔄 Auto-Tracking:");
-                        ui.add(egui::ProgressBar::new(progress)
-                            .show_percentage()
-                            .desired_width(100.0));
+                        ui.add(
+                            egui::ProgressBar::new(progress)
+                                .show_percentage()
+                                .desired_width(100.0),
+                        );
                     } else {
                         ui.label("✅ Ready");
                     }

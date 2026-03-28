@@ -47,10 +47,10 @@ mod tests {
     fn test_constant_velocity() {
         // v0 = 2000 m/s, k = 0, sample_rate = 4ms, start_time = 0
         let model = LinearVelocityModel::new(2000.0, 0.0, 4.0, 0.0);
-        
+
         // At 0 samples (0ms), depth should be 0
         assert_eq!(model.sample_to_depth(0.0), 0.0);
-        
+
         // At 250 samples (1000ms = 1s), depth should be 2000 * 1 / 2 = 1000m
         assert_eq!(model.sample_to_depth(250.0), 1000.0);
     }
@@ -59,10 +59,10 @@ mod tests {
     fn test_gradient_velocity() {
         // v0 = 2000 m/s, k = 0.5 s^-1, sample_rate = 4ms, start_time = 0
         let model = LinearVelocityModel::new(2000.0, 0.5, 4.0, 0.0);
-        
+
         // At 0 samples (0ms), depth should be 0
         assert_eq!(model.sample_to_depth(0.0), 0.0);
-        
+
         // At 500 samples (2000ms = 2s)
         // Z = (2000 / 0.5) * (exp(0.5 * 2 / 2) - 1)
         // Z = 4000 * (exp(0.5) - 1)
@@ -75,7 +75,7 @@ mod tests {
     fn test_start_time_offset() {
         // v0 = 2000 m/s, k = 0, sample_rate = 4ms, start_time = 500ms
         let model = LinearVelocityModel::new(2000.0, 0.0, 4.0, 500.0);
-        
+
         // At 0 samples (500ms = 0.5s), depth should be 2000 * 0.5 / 2 = 500m
         assert_eq!(model.sample_to_depth(0.0), 500.0);
     }

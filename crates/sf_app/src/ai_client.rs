@@ -23,7 +23,12 @@ impl AiClient {
         Ok(Self { client })
     }
 
-    pub async fn detect_faults(&mut self, data: Vec<u8>, width: u32, height: u32) -> Result<(Vec<u8>, f32)> {
+    pub async fn detect_faults(
+        &mut self,
+        data: Vec<u8>,
+        width: u32,
+        height: u32,
+    ) -> Result<(Vec<u8>, f32)> {
         let request = tonic::Request::new(SliceRequest {
             data,
             width,

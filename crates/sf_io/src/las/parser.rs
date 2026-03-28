@@ -41,15 +41,17 @@ impl LasParser {
     pub fn read(path: &Path) -> Result<Well, LasError> {
         // First pass: detect version
         let version = Self::detect_version(path)?;
-        
+
         // Second pass: parse file
         let file = std::fs::File::open(path)
             .map_err(|_| LasError::FileNotFound(path.display().to_string()))?;
         let reader = BufReader::new(file);
-        
+
         match version {
             LasVersion::Las20 => Self::parse_las_20(reader, path),
-            LasVersion::Las30 => Err(LasError::InvalidVersion("LAS 3.0 not yet implemented".to_string())),
+            LasVersion::Las30 => Err(LasError::InvalidVersion(
+                "LAS 3.0 not yet implemented".to_string(),
+            )),
             LasVersion::Unknown => Err(LasError::InvalidVersion("Unknown LAS version".to_string())),
         }
     }
@@ -58,10 +60,10 @@ impl LasParser {
     fn detect_version(path: &Path) -> Result<LasVersion, LasError> {
         let content = std::fs::read_to_string(path)
             .map_err(|_| LasError::FileNotFound(path.display().to_string()))?;
-        
+
         for line in content.lines() {
             let trimmed = line.trim();
-            
+
             // Look for VERS. in any section
             if trimmed.starts_with("VERS.") {
                 if trimmed.contains("2.0") {
@@ -156,7 +158,10 @@ impl LasParser {
                 if i > logs.len() {
                     // Create new log
                     let (mnemonic, unit) = if i - 1 < curve_defs.len() {
-                        (curve_defs[i - 1].mnemonic.clone(), curve_defs[i - 1].unit.clone())
+                        (
+                            curve_defs[i - 1].mnemonic.clone(),
+                            curve_defs[i - 1].unit.clone(),
+                        )
                     } else {
                         (format!("CURVE_{}", i), "UNKNOWN".to_string())
                     };
@@ -174,8 +179,16 @@ impl LasParser {
         for log in &mut logs {
             log.depths = all_depths.clone();
             if !log.depths.is_empty() {
-                log.min_depth = *log.depths.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
-                log.max_depth = *log.depths.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
+                log.min_depth = *log
+                    .depths
+                    .iter()
+                    .min_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(&0.0);
+                log.max_depth = *log
+                    .depths
+                    .iter()
+                    .max_by(|a, b| a.partial_cmp(b).unwrap())
+                    .unwrap_or(&0.0);
             }
         }
 
@@ -255,10 +268,7 @@ impl LasParser {
     fn extract_unit(line: &str) -> Option<String> {
         let parts: Vec<&str> = line.split('.').collect();
         if parts.len() > 1 {
-            parts[1]
-                .split_whitespace()
-                .next()
-                .map(|s| s.to_string())
+            parts[1].split_whitespace().next().map(|s| s.to_string())
         } else {
             None
         }

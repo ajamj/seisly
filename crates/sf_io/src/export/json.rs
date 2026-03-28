@@ -1,7 +1,7 @@
-use std::path::Path;
+use super::SurfaceExporter;
 use anyhow::Result;
 use sf_core::domain::surface::Mesh;
-use super::SurfaceExporter;
+use std::path::Path;
 
 pub struct JsonExporter;
 

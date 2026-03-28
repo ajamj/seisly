@@ -31,12 +31,14 @@ impl WellState {
     }
 
     pub fn active_well(&self) -> Option<&Well> {
-        self.active_well_id.and_then(|id| self.wells.iter().find(|w| w.id == id))
+        self.active_well_id
+            .and_then(|id| self.wells.iter().find(|w| w.id == id))
     }
 
     #[allow(dead_code)] // Reserved for future well editing
     pub fn active_well_mut(&mut self) -> Option<&mut Well> {
-        self.active_well_id.and_then(|id| self.wells.iter_mut().find(|w| w.id == id))
+        self.active_well_id
+            .and_then(|id| self.wells.iter_mut().find(|w| w.id == id))
     }
 
     #[allow(dead_code)] // Reserved for future well lookup
@@ -66,7 +68,13 @@ mod tests {
     #[test]
     fn test_add_well() {
         let mut state = WellState::new();
-        let well = Well::new("Well-1".to_string(), "W1".to_string(), 500000.0, 1000000.0, 100.0);
+        let well = Well::new(
+            "Well-1".to_string(),
+            "W1".to_string(),
+            500000.0,
+            1000000.0,
+            100.0,
+        );
         let well_id = well.id;
 
         state.add_well(well);
@@ -79,8 +87,20 @@ mod tests {
     #[test]
     fn test_remove_well() {
         let mut state = WellState::new();
-        let well1 = Well::new("Well-1".to_string(), "W1".to_string(), 500000.0, 1000000.0, 100.0);
-        let well2 = Well::new("Well-2".to_string(), "W2".to_string(), 500100.0, 1000100.0, 105.0);
+        let well1 = Well::new(
+            "Well-1".to_string(),
+            "W1".to_string(),
+            500000.0,
+            1000000.0,
+            100.0,
+        );
+        let well2 = Well::new(
+            "Well-2".to_string(),
+            "W2".to_string(),
+            500100.0,
+            1000100.0,
+            105.0,
+        );
         let well1_id = well1.id;
 
         state.add_well(well1);

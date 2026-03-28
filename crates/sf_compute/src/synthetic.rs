@@ -17,11 +17,7 @@ pub struct SyntheticSeismic {
 }
 
 impl SyntheticSeismic {
-    pub fn new(
-        inline_count: usize,
-        crossline_count: usize,
-        sample_count: usize,
-    ) -> Self {
+    pub fn new(inline_count: usize, crossline_count: usize, sample_count: usize) -> Self {
         Self {
             inline_count,
             crossline_count,
@@ -44,10 +40,10 @@ impl SyntheticSeismic {
 
         // Add reflectors (horizontal layers)
         let reflectors = vec![
-            (100, 0.8),   // Sample 100, amplitude 0.8
-            (200, 0.6),   // Sample 200, amplitude 0.6
-            (300, 0.9),   // Sample 300, amplitude 0.9
-            (400, 0.7),   // Sample 400, amplitude 0.7
+            (100, 0.8), // Sample 100, amplitude 0.8
+            (200, 0.6), // Sample 200, amplitude 0.6
+            (300, 0.9), // Sample 300, amplitude 0.9
+            (400, 0.7), // Sample 400, amplitude 0.7
         ];
 
         for (reflector_sample, amplitude) in reflectors {
@@ -330,13 +326,16 @@ impl SyntheticHorizonPicks {
                 // Add structural variation (anticline)
                 let il_center = inline_count as f32 / 2.0;
                 let xl_center = crossline_count as f32 / 2.0;
-                let dist = ((il as f32 - il_center).powi(2) + (xl as f32 - xl_center).powi(2)).sqrt();
+                let dist =
+                    ((il as f32 - il_center).powi(2) + (xl as f32 - xl_center).powi(2)).sqrt();
                 let structural_shift = (dist / il_center * self.variation as f32 * 0.5) as i32;
 
                 // Add random variation
-                let random_shift = rng.gen_range(-(self.variation as i32 / 2)..=(self.variation as i32 / 2));
+                let random_shift =
+                    rng.gen_range(-(self.variation as i32 / 2)..=(self.variation as i32 / 2));
 
-                let sample = (self.base_sample as i32 - structural_shift + random_shift).max(0) as usize;
+                let sample =
+                    (self.base_sample as i32 - structural_shift + random_shift).max(0) as usize;
 
                 picks.push([il as f32, xl as f32, sample as f32]);
             }
@@ -346,7 +345,11 @@ impl SyntheticHorizonPicks {
     }
 
     /// Generate fault stick picks
-    pub fn generate_fault_sticks(&self, fault_inline: usize, stick_count: usize) -> Vec<Vec<[f32; 3]>> {
+    pub fn generate_fault_sticks(
+        &self,
+        fault_inline: usize,
+        stick_count: usize,
+    ) -> Vec<Vec<[f32; 3]>> {
         let mut rng = rand::thread_rng();
         let mut sticks = Vec::new();
 

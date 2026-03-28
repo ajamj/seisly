@@ -2,8 +2,8 @@
 //!
 //! Provides UI for well management and visualization.
 
-use eframe::egui;
 use crate::interpretation::WellState;
+use eframe::egui;
 
 /// Widget for well management
 pub struct WellPanel {
@@ -47,12 +47,9 @@ impl WellPanel {
                             egui::Color32::GRAY
                         };
 
-                        let symbol_rect = ui.allocate_response(egui::vec2(20.0, 20.0), egui::Sense::click());
-                        ui.painter().rect_filled(
-                            symbol_rect.rect,
-                            2.0,
-                            color,
-                        );
+                        let symbol_rect =
+                            ui.allocate_response(egui::vec2(20.0, 20.0), egui::Sense::click());
+                        ui.painter().rect_filled(symbol_rect.rect, 2.0, color);
 
                         // Well name (selectable)
                         let response = ui.selectable_label(is_active, &well.name);
@@ -70,7 +67,7 @@ impl WellPanel {
 
                 // Import well button
                 ui.separator();
-                
+
                 ui.horizontal(|ui| {
                     if ui.button("📂 Import Well (LAS)").clicked() {
                         // For now, create a demo well
@@ -85,11 +82,17 @@ impl WellPanel {
         // Well details (if well is selected)
         if let Some(well) = well_state.active_well() {
             ui.heading("Well Details");
-            
+
             ui.label(format!("Name: {}", well.name));
             ui.label(format!("Symbol: {}", well.symbol));
-            ui.label(format!("Location: ({:.1}, {:.1})", well.location.x, well.location.y));
-            ui.label(format!("Datum: {} @ {:.1}m", well.datum.name, well.datum.elevation));
+            ui.label(format!(
+                "Location: ({:.1}, {:.1})",
+                well.location.x, well.location.y
+            ));
+            ui.label(format!(
+                "Datum: {} @ {:.1}m",
+                well.datum.name, well.datum.elevation
+            ));
 
             ui.separator();
 
@@ -104,8 +107,9 @@ impl WellPanel {
                             (top.color[2] * 255.0) as u8,
                             (top.color[3] * 255.0) as u8,
                         );
-                        
-                        let color_rect = ui.allocate_response(egui::vec2(12.0, 12.0), egui::Sense::hover());
+
+                        let color_rect =
+                            ui.allocate_response(egui::vec2(12.0, 12.0), egui::Sense::hover());
                         ui.painter().rect_filled(color_rect.rect, 2.0, color);
 
                         ui.label(format!("{}: {:.1}m ({})", top.name, top.depth, top.type_));
@@ -117,8 +121,14 @@ impl WellPanel {
             ui.collapsing("Log Curves", |ui| {
                 for log in &well.logs {
                     ui.horizontal(|ui| {
-                        ui.label(format!("{}: {} ({})", log.mnemonic, log.description, log.units));
-                        ui.label(format!("Depth: {:.1}m - {:.1}m", log.min_depth, log.max_depth));
+                        ui.label(format!(
+                            "{}: {} ({})",
+                            log.mnemonic, log.description, log.units
+                        ));
+                        ui.label(format!(
+                            "Depth: {:.1}m - {:.1}m",
+                            log.min_depth, log.max_depth
+                        ));
                     });
                 }
             });
@@ -140,18 +150,49 @@ impl WellPanel {
         );
 
         // Add some demo formation tops
-        well.add_top("Top Sand A".to_string(), 1500.0, "TOP".to_string(), [1.0, 0.8, 0.0, 1.0]);
-        well.add_top("Base Sand A".to_string(), 1600.0, "BASE".to_string(), [0.8, 0.6, 0.0, 1.0]);
-        well.add_top("Top Shale B".to_string(), 1800.0, "TOP".to_string(), [0.5, 0.5, 0.8, 1.0]);
-        well.add_top("Top Sand C".to_string(), 2000.0, "TOP".to_string(), [1.0, 0.5, 0.0, 1.0]);
+        well.add_top(
+            "Top Sand A".to_string(),
+            1500.0,
+            "TOP".to_string(),
+            [1.0, 0.8, 0.0, 1.0],
+        );
+        well.add_top(
+            "Base Sand A".to_string(),
+            1600.0,
+            "BASE".to_string(),
+            [0.8, 0.6, 0.0, 1.0],
+        );
+        well.add_top(
+            "Top Shale B".to_string(),
+            1800.0,
+            "TOP".to_string(),
+            [0.5, 0.5, 0.8, 1.0],
+        );
+        well.add_top(
+            "Top Sand C".to_string(),
+            2000.0,
+            "TOP".to_string(),
+            [1.0, 0.5, 0.0, 1.0],
+        );
 
         // Add a demo GR log
         let depths: Vec<f32> = (0..100).map(|i| i as f32 * 10.0).collect();
-        let gr_values: Vec<f32> = depths.iter().map(|d| 50.0 + (d / 100.0).sin() * 30.0).collect();
-        well.add_log("GR".to_string(), "GAPI".to_string(), gr_values, depths.clone());
+        let gr_values: Vec<f32> = depths
+            .iter()
+            .map(|d| 50.0 + (d / 100.0).sin() * 30.0)
+            .collect();
+        well.add_log(
+            "GR".to_string(),
+            "GAPI".to_string(),
+            gr_values,
+            depths.clone(),
+        );
 
         // Add a demo DT log
-        let dt_values: Vec<f32> = depths.iter().map(|d| 200.0 + (d / 50.0).cos() * 50.0).collect();
+        let dt_values: Vec<f32> = depths
+            .iter()
+            .map(|d| 200.0 + (d / 50.0).cos() * 50.0)
+            .collect();
         well.add_log("DT".to_string(), "us/m".to_string(), dt_values, depths);
 
         well_state.add_well(well);

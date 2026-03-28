@@ -1,6 +1,6 @@
 //! 3D scene management
 
-use crate::{MeshRenderer, LineRenderer, PointRenderer};
+use crate::{LineRenderer, MeshRenderer, PointRenderer};
 
 /// 3D scene containing renderable objects
 pub struct Scene {
@@ -17,11 +17,11 @@ impl Scene {
             points: vec![],
         }
     }
-    
+
     pub fn add_mesh(&mut self, renderer: MeshRenderer) {
         self.meshes.push(renderer);
     }
-    
+
     pub fn add_lines(&mut self, renderer: LineRenderer) {
         self.lines.push(renderer);
     }
@@ -29,11 +29,11 @@ impl Scene {
     pub fn add_points(&mut self, renderer: PointRenderer) {
         self.points.push(renderer);
     }
-    
+
     pub fn mesh_count(&self) -> usize {
         self.meshes.len()
     }
-    
+
     pub fn line_count(&self) -> usize {
         self.lines.len()
     }

@@ -1,8 +1,12 @@
 //! Fault surface renderer with transparency support
 
-use wgpu::{Device, Buffer, BufferUsages, RenderPipeline, PipelineLayoutDescriptor, ShaderModuleDescriptor, ShaderSource, ColorTargetState, ColorWrites, FragmentState, VertexState, MultisampleState, PrimitiveState, PrimitiveTopology, RenderPass, BindGroupLayout, BindGroup};
 use sf_core::domain::surface::Mesh;
 use wgpu::util::DeviceExt;
+use wgpu::{
+    BindGroup, BindGroupLayout, Buffer, BufferUsages, ColorTargetState, ColorWrites, Device,
+    FragmentState, MultisampleState, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology,
+    RenderPass, RenderPipeline, ShaderModuleDescriptor, ShaderSource, VertexState,
+};
 
 /// GPU fault mesh with vertex and index buffers
 pub struct FaultMesh {
@@ -105,8 +109,18 @@ struct FaultUniforms {
 }
 
 impl FaultUniforms {
-    fn new(model: [[f32; 4]; 4], view: [[f32; 4]; 4], projection: [[f32; 4]; 4], color: [f32; 4]) -> Self {
-        Self { model, view, projection, color }
+    fn new(
+        model: [[f32; 4]; 4],
+        view: [[f32; 4]; 4],
+        projection: [[f32; 4]; 4],
+        color: [f32; 4],
+    ) -> Self {
+        Self {
+            model,
+            view,
+            projection,
+            color,
+        }
     }
 }
 
@@ -131,9 +145,9 @@ impl FaultRenderer {
         });
 
         // Uniform bind group layout for MVP + color
-        let uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
@@ -142,10 +156,9 @@ impl FaultRenderer {
                         min_binding_size: None,
                     },
                     count: None,
-                },
-            ],
-            label: Some("fault_uniform_bind_group_layout"),
-        });
+                }],
+                label: Some("fault_uniform_bind_group_layout"),
+            });
 
         // Vertex bind group layout (empty for now, but kept for future use)
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -165,24 +178,22 @@ impl FaultRenderer {
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    wgpu::VertexBufferLayout {
-                        array_stride: 24, // 6 * 4 bytes (position + normal)
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &[
-                            wgpu::VertexAttribute {
-                                offset: 0,
-                                shader_location: 0,
-                                format: wgpu::VertexFormat::Float32x3,
-                            },
-                            wgpu::VertexAttribute {
-                                offset: 12,
-                                shader_location: 1,
-                                format: wgpu::VertexFormat::Float32x3,
-                            },
-                        ],
-                    }
-                ],
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 24, // 6 * 4 bytes (position + normal)
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            offset: 0,
+                            shader_location: 0,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                        wgpu::VertexAttribute {
+                            offset: 12,
+                            shader_location: 1,
+                            format: wgpu::VertexFormat::Float32x3,
+                        },
+                    ],
+                }],
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -246,12 +257,10 @@ impl FaultRenderer {
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.uniform_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
             label: Some("fault_bind_group"),
         });
 
@@ -270,7 +279,10 @@ impl FaultRenderer {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &render_data.bind_group, &[]);
         render_pass.set_vertex_buffer(0, fault_mesh.vertex_buffer().slice(..));
-        render_pass.set_index_buffer(fault_mesh.index_buffer().slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.set_index_buffer(
+            fault_mesh.index_buffer().slice(..),
+            wgpu::IndexFormat::Uint32,
+        );
         render_pass.draw_indexed(0..fault_mesh.index_count(), 0, 0..1);
     }
 
@@ -293,11 +305,7 @@ mod tests {
     #[test]
     fn test_fault_mesh_center() {
         let mesh = Mesh::new(
-            vec![
-                [0.0, 0.0, 0.0],
-                [2.0, 0.0, 0.0],
-                [1.0, 3.0, 0.0],
-            ],
+            vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [1.0, 3.0, 0.0]],
             vec![0, 1, 2],
         );
 

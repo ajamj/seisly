@@ -80,10 +80,9 @@ impl ProjectManager {
 
     /// Save project to file
     pub fn save(project: &ProjectData, path: &Path) -> Result<(), String> {
-        let json = serde_json::to_string_pretty(project)
-            .map_err(|e| format!("JSON error: {}", e))?;
-        std::fs::write(path, json)
-            .map_err(|e| format!("IO error: {}", e))?;
+        let json =
+            serde_json::to_string_pretty(project).map_err(|e| format!("JSON error: {}", e))?;
+        std::fs::write(path, json).map_err(|e| format!("IO error: {}", e))?;
         Ok(())
     }
 
@@ -92,10 +91,8 @@ impl ProjectManager {
         if !path.exists() {
             return Err(format!("Project not found: {}", path.display()));
         }
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("IO error: {}", e))?;
-        serde_json::from_str(&content)
-            .map_err(|e| format!("JSON error: {}", e))
+        let content = std::fs::read_to_string(path).map_err(|e| format!("IO error: {}", e))?;
+        serde_json::from_str(&content).map_err(|e| format!("JSON error: {}", e))
     }
 
     /// Get project file extension
@@ -112,38 +109,44 @@ impl ProjectData {
         let now = "2026-03-28T00:00:00Z";
         let mut project = Self::create_new(name);
         project.modified_at = now.to_string();
-        
+
         // Snapshot interpretation
         project.interpretation = InterpretationSnapshot {
-            horizons: interpretation.horizons.iter().map(|h| {
-                HorizonSnapshot {
+            horizons: interpretation
+                .horizons
+                .iter()
+                .map(|h| HorizonSnapshot {
                     id: h.id,
                     name: h.name.clone(),
                     color: h.color,
                     picks_count: h.picks.len(),
-                }
-            }).collect(),
-            faults: interpretation.faults.iter().map(|f| {
-                FaultSnapshot {
+                })
+                .collect(),
+            faults: interpretation
+                .faults
+                .iter()
+                .map(|f| FaultSnapshot {
                     id: f.id,
                     name: f.name.clone(),
                     color: f.color,
                     sticks_count: f.sticks.len(),
-                }
-            }).collect(),
+                })
+                .collect(),
             active_horizon_id: interpretation.active_horizon_id,
             active_fault_id: interpretation.active_fault_id,
         };
 
         // Snapshot wells
         project.wells = WellStateSnapshot {
-            wells: wells.wells.iter().map(|w| {
-                WellSnapshot {
+            wells: wells
+                .wells
+                .iter()
+                .map(|w| WellSnapshot {
                     id: w.id,
                     name: w.name.clone(),
                     logs_count: w.logs.len(),
-                }
-            }).collect(),
+                })
+                .collect(),
             active_well_id: wells.active_well_id,
         };
 
@@ -175,7 +178,7 @@ mod tests {
         let path = temp_dir.path().join("test.sfp");
 
         ProjectManager::save(&project, &path).unwrap();
-        
+
         let loaded = ProjectManager::load(&path).unwrap();
         assert_eq!(loaded.name, "Test Project");
     }

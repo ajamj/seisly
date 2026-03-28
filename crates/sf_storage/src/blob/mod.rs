@@ -29,30 +29,30 @@ impl BlobStore {
     pub fn store(&self, content: &[u8]) -> Result<String, BlobError> {
         let hash = blake3::hash(content);
         let hash_str = hash.to_string();
-        
+
         // Create subdirectory structure (ab/cd/<hash>)
         let subdir = self.base_path.join(&hash_str[0..2]).join(&hash_str[2..4]);
         fs::create_dir_all(&subdir)?;
-        
+
         let file_path = subdir.join(&hash_str);
         let mut file = File::create(&file_path)?;
         file.write_all(content)?;
-        
+
         Ok(hash_str)
     }
 
     /// Retrieve content by hash
     pub fn retrieve(&self, hash: &str) -> Result<Vec<u8>, BlobError> {
         let file_path = self.get_blob_path(hash);
-        
+
         if !file_path.exists() {
             return Err(BlobError::NotFound(hash.to_string()));
         }
-        
+
         let mut file = File::open(&file_path)?;
         let mut content = Vec::new();
         file.read_to_end(&mut content)?;
-        
+
         // Verify hash
         let computed_hash = blake3::hash(&content).to_string();
         if computed_hash != hash {
@@ -61,7 +61,7 @@ impl BlobStore {
                 actual: computed_hash,
             });
         }
-        
+
         Ok(content)
     }
 
@@ -101,10 +101,10 @@ mod tests {
     fn test_blob_store_roundtrip() {
         let temp_dir = TempDir::new().unwrap();
         let store = BlobStore::new(temp_dir.path().to_path_buf());
-        
+
         let content = b"Hello, StrataForge!";
         let hash = store.store(content).unwrap();
-        
+
         let retrieved = store.retrieve(&hash).unwrap();
         assert_eq!(content, retrieved.as_slice());
         assert_eq!(hash.len(), 64); // BLAKE3 produces 64-char hex string
@@ -114,10 +114,10 @@ mod tests {
     fn test_blob_exists() {
         let temp_dir = TempDir::new().unwrap();
         let store = BlobStore::new(temp_dir.path().to_path_buf());
-        
+
         let content = b"Test content";
         let hash = store.store(content).unwrap();
-        
+
         assert!(store.exists(&hash));
         assert!(!store.exists("nonexistent"));
     }
@@ -126,7 +126,7 @@ mod tests {
     fn test_blob_not_found() {
         let temp_dir = TempDir::new().unwrap();
         let store = BlobStore::new(temp_dir.path().to_path_buf());
-        
+
         let result = store.retrieve("nonexistent");
         assert!(result.is_err());
     }
@@ -135,10 +135,10 @@ mod tests {
     fn test_blob_size() {
         let temp_dir = TempDir::new().unwrap();
         let store = BlobStore::new(temp_dir.path().to_path_buf());
-        
+
         let content = b"Test content for size";
         let hash = store.store(content).unwrap();
-        
+
         let size = store.size(&hash).unwrap();
         assert_eq!(size, content.len() as u64);
     }

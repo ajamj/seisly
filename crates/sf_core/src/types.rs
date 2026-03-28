@@ -1,9 +1,9 @@
 //! Common types used across the domain model
 
+use crate::Crs;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use crate::Crs;
 
 /// Unique identifier for all entities
 pub type EntityId = Uuid;
@@ -47,7 +47,7 @@ mod tests {
             parameters: serde_json::json!({"param": "value"}),
             created_at: Utc::now(),
         };
-        
+
         assert_eq!(provenance.source_ids.len(), 1);
         assert_eq!(provenance.algorithm, "test_algo");
     }

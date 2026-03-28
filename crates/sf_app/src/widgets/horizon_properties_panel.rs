@@ -2,9 +2,9 @@
 //!
 //! Provides UI for editing horizon properties and managing horizon layers.
 
+use crate::interpretation::InterpretationState;
 use eframe::egui;
 use uuid::Uuid;
-use crate::interpretation::InterpretationState;
 
 /// Widget for editing horizon properties
 pub struct HorizonPropertiesPanel {
@@ -49,13 +49,10 @@ impl HorizonPropertiesPanel {
                             (horizon.color[2] * 255.0) as u8,
                             (horizon.color[3] * 255.0) as u8,
                         );
-                        
-                        let color_rect = ui.allocate_response(egui::vec2(16.0, 16.0), egui::Sense::click());
-                        ui.painter().rect_filled(
-                            color_rect.rect,
-                            4.0,
-                            color,
-                        );
+
+                        let color_rect =
+                            ui.allocate_response(egui::vec2(16.0, 16.0), egui::Sense::click());
+                        ui.painter().rect_filled(color_rect.rect, 4.0, color);
 
                         // Horizon name (selectable)
                         let response = ui.selectable_label(is_selected, &horizon.name);
@@ -72,12 +69,7 @@ impl HorizonPropertiesPanel {
                 // Add new horizon button
                 if ui.button("+ Add Horizon").clicked() {
                     let name = format!("Horizon {}", interpretation.horizons.len() + 1);
-                    let color = [
-                        0.0,
-                        1.0,
-                        0.0,
-                        0.7,
-                    ];
+                    let color = [0.0, 1.0, 0.0, 0.7];
                     let horizon = crate::interpretation::Horizon::new(name.clone(), color);
                     let horizon_id = horizon.id;
                     interpretation.add_horizon(horizon);
@@ -91,14 +83,19 @@ impl HorizonPropertiesPanel {
 
         // Property editor (only if horizon is selected)
         if let Some(horizon_id) = self.selected_horizon_id {
-            if let Some(horizon) = interpretation.horizons.iter_mut().find(|h| h.id == horizon_id) {
+            if let Some(horizon) = interpretation
+                .horizons
+                .iter_mut()
+                .find(|h| h.id == horizon_id)
+            {
                 ui.heading("Edit Properties");
 
                 // Name editor
                 ui.horizontal(|ui| {
                     ui.label("Name:");
-                    if ui.text_edit_singleline(&mut self.name_buffer).lost_focus() 
-                        && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    if ui.text_edit_singleline(&mut self.name_buffer).lost_focus()
+                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                    {
                         horizon.name = self.name_buffer.clone();
                     }
                 });
@@ -106,7 +103,7 @@ impl HorizonPropertiesPanel {
                 // Color picker
                 ui.horizontal(|ui| {
                     ui.label("Color:");
-                    
+
                     let mut color = egui::Color32::from_rgba_unmultiplied(
                         (horizon.color[0] * 255.0) as u8,
                         (horizon.color[1] * 255.0) as u8,
@@ -155,17 +152,21 @@ impl HorizonPropertiesPanel {
                 // Delete button
                 let delete_response = ui.add_enabled(
                     interpretation.horizons.len() > 0,
-                    egui::Button::new("🗑 Delete Horizon").fill(egui::Color32::from_rgb(180, 50, 50))
+                    egui::Button::new("🗑 Delete Horizon")
+                        .fill(egui::Color32::from_rgb(180, 50, 50)),
                 );
 
                 if delete_response.clicked() {
                     interpretation.horizons.retain(|h| h.id != horizon_id);
                     if interpretation.active_horizon_id == Some(horizon_id) {
-                        interpretation.active_horizon_id = interpretation.horizons.first().map(|h| h.id);
+                        interpretation.active_horizon_id =
+                            interpretation.horizons.first().map(|h| h.id);
                     }
                     self.selected_horizon_id = interpretation.horizons.first().map(|h| h.id);
                     if let Some(selected_id) = self.selected_horizon_id {
-                        if let Some(selected_horizon) = interpretation.horizons.iter().find(|h| h.id == selected_id) {
+                        if let Some(selected_horizon) =
+                            interpretation.horizons.iter().find(|h| h.id == selected_id)
+                        {
                             self.name_buffer = selected_horizon.name.clone();
                         }
                     } else {

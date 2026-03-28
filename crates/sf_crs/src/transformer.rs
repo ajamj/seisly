@@ -24,7 +24,9 @@ impl Transformer {
     pub fn new(source: &Crs, target: &Crs) -> Result<Self, TransformError> {
         // Validate that we have valid CRS definitions
         if source.definition.is_empty() || target.definition.is_empty() {
-            return Err(TransformError::InitError("Empty CRS definition".to_string()));
+            return Err(TransformError::InitError(
+                "Empty CRS definition".to_string(),
+            ));
         }
 
         Ok(Self {
@@ -34,7 +36,7 @@ impl Transformer {
     }
 
     /// Transform points from source to target CRS
-    /// 
+    ///
     /// Note: This is a simplified implementation. A full implementation
     /// would use the proj crate to perform actual coordinate transformations.
     pub fn transform_points(&self, points: &[[f64; 3]]) -> Result<Vec<[f64; 3]>, TransformError> {
@@ -43,7 +45,7 @@ impl Transformer {
         // 1. Initialize PROJ context with source and target CRS
         // 2. Transform each point through PROJ
         // 3. Return transformed points
-        
+
         // For now, just return the points as-is (identity transform)
         Ok(points.to_vec())
     }
@@ -84,10 +86,10 @@ mod tests {
         let source = Crs::from_epsg(4326);
         let target = Crs::from_epsg(4326);
         let transformer = Transformer::new(&source, &target).unwrap();
-        
+
         let points = vec![[100.0, 0.0, 50.0]];
         let result = transformer.transform_points(&points).unwrap();
-        
+
         // Identity transform - points should be unchanged
         assert_eq!(result[0], points[0]);
     }

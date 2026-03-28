@@ -1,8 +1,8 @@
-use std::path::Path;
-use anyhow::Result;
-use std::io::Write;
-use sf_core::domain::surface::Mesh;
 use super::SurfaceExporter;
+use anyhow::Result;
+use sf_core::domain::surface::Mesh;
+use std::io::Write;
+use std::path::Path;
 
 pub struct XyzExporter;
 

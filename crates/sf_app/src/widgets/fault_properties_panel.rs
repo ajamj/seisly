@@ -2,9 +2,9 @@
 //!
 //! Provides UI for editing fault properties and managing fault layers.
 
+use crate::interpretation::{Fault, InterpretationState};
 use eframe::egui;
 use uuid::Uuid;
-use crate::interpretation::{InterpretationState, Fault};
 
 /// Widget for editing fault properties
 pub struct FaultPropertiesPanel {
@@ -49,13 +49,10 @@ impl FaultPropertiesPanel {
                             (fault.color[2] * 255.0) as u8,
                             (fault.color[3] * 255.0) as u8,
                         );
-                        
-                        let color_rect = ui.allocate_response(egui::vec2(16.0, 16.0), egui::Sense::click());
-                        ui.painter().rect_filled(
-                            color_rect.rect,
-                            4.0,
-                            color,
-                        );
+
+                        let color_rect =
+                            ui.allocate_response(egui::vec2(16.0, 16.0), egui::Sense::click());
+                        ui.painter().rect_filled(color_rect.rect, 4.0, color);
 
                         // Fault name (selectable)
                         let response = ui.selectable_label(is_selected, &fault.name);
@@ -72,12 +69,7 @@ impl FaultPropertiesPanel {
                 // Add new fault button
                 if ui.button("+ Add Fault").clicked() {
                     let name = format!("Fault {}", interpretation.faults.len() + 1);
-                    let color = [
-                        1.0,
-                        0.0,
-                        0.0,
-                        0.5,
-                    ];
+                    let color = [1.0, 0.0, 0.0, 0.5];
                     let fault = Fault::new(name.clone(), color);
                     let fault_id = fault.id;
                     interpretation.add_fault(fault);
@@ -97,8 +89,9 @@ impl FaultPropertiesPanel {
                 // Name editor
                 ui.horizontal(|ui| {
                     ui.label("Name:");
-                    if ui.text_edit_singleline(&mut self.name_buffer).lost_focus() 
-                        && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    if ui.text_edit_singleline(&mut self.name_buffer).lost_focus()
+                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                    {
                         fault.set_name(self.name_buffer.clone());
                     }
                 });
@@ -141,17 +134,20 @@ impl FaultPropertiesPanel {
                 // Delete button
                 let delete_response = ui.add_enabled(
                     interpretation.faults.len() > 0,
-                    egui::Button::new("🗑 Delete Fault").fill(egui::Color32::from_rgb(180, 50, 50))
+                    egui::Button::new("🗑 Delete Fault").fill(egui::Color32::from_rgb(180, 50, 50)),
                 );
 
                 if delete_response.clicked() {
                     interpretation.faults.retain(|f| f.id != fault_id);
                     if interpretation.active_fault_id == Some(fault_id) {
-                        interpretation.active_fault_id = interpretation.faults.first().map(|f| f.id);
+                        interpretation.active_fault_id =
+                            interpretation.faults.first().map(|f| f.id);
                     }
                     self.selected_fault_id = interpretation.faults.first().map(|f| f.id);
                     if let Some(selected_id) = self.selected_fault_id {
-                        if let Some(selected_fault) = interpretation.faults.iter().find(|f| f.id == selected_id) {
+                        if let Some(selected_fault) =
+                            interpretation.faults.iter().find(|f| f.id == selected_id)
+                        {
                             self.name_buffer = selected_fault.name.clone();
                         }
                     } else {

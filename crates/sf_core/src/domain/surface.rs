@@ -1,8 +1,8 @@
 //! Surface domain entity
 
-use serde::{Deserialize, Serialize};
 use crate::types::{DatasetMetadata, EntityId};
 use crate::Crs;
+use serde::{Deserialize, Serialize};
 
 /// Reference to a blob in the blob store (deprecated for in-memory surface mesh)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,11 +68,7 @@ mod tests {
 
     #[test]
     fn test_mesh_creation() {
-        let vertices = vec![
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        ];
+        let vertices = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
         let indices = vec![0, 1, 2];
         let mesh = Mesh::new(vertices, indices);
         assert_eq!(mesh.vertices.len(), 3);
@@ -92,16 +88,12 @@ mod tests {
 
     #[test]
     fn test_surface_creation() {
-        let vertices = vec![
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        ];
+        let vertices = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
         let indices = vec![0, 1, 2];
         let mesh = Mesh::new(vertices, indices);
         let crs = crate::Crs::Wgs84;
         let surface = Surface::new("Top Reservoir".to_string(), crs, vec![mesh]);
-        
+
         assert_eq!(surface.metadata.name, "Top Reservoir");
         assert_eq!(surface.meshes.len(), 1);
         assert_eq!(surface.intersection_lines.len(), 0);

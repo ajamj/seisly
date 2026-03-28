@@ -12,7 +12,10 @@ pub struct Plane {
 
 impl Plane {
     pub fn new(origin: Point3<f32>, normal: Vector3<f32>) -> Self {
-        Self { origin, normal: normal.normalize() }
+        Self {
+            origin,
+            normal: normal.normalize(),
+        }
     }
 
     /// Distance from point to plane (signed).
@@ -34,7 +37,12 @@ pub enum TriangleIntersection {
 }
 
 /// Computes the intersection of a triangle (defined by 3 points) and a plane.
-pub fn intersect_triangle_plane(v0: Point3<f32>, v1: Point3<f32>, v2: Point3<f32>, plane: &Plane) -> TriangleIntersection {
+pub fn intersect_triangle_plane(
+    v0: Point3<f32>,
+    v1: Point3<f32>,
+    v2: Point3<f32>,
+    plane: &Plane,
+) -> TriangleIntersection {
     let d0 = plane.distance_to_point(v0);
     let d1 = plane.distance_to_point(v1);
     let d2 = plane.distance_to_point(v2);
@@ -42,9 +50,11 @@ pub fn intersect_triangle_plane(v0: Point3<f32>, v1: Point3<f32>, v2: Point3<f32
     let epsilon = 1e-6;
 
     let points = [(v0, d0), (v1, d1), (v2, d2)];
-    
+
     // Check if all points are on one side
-    if (d0 > epsilon && d1 > epsilon && d2 > epsilon) || (d0 < -epsilon && d1 < -epsilon && d2 < -epsilon) {
+    if (d0 > epsilon && d1 > epsilon && d2 > epsilon)
+        || (d0 < -epsilon && d1 < -epsilon && d2 < -epsilon)
+    {
         return TriangleIntersection::None;
     }
 
@@ -99,7 +109,10 @@ pub fn intersect_mesh_plane(mesh: &Mesh, plane: &Plane) -> Vec<Vec<[f32; 3]>> {
     }
 
     // TODO: Connect segments into polylines. For now, just return individual segments.
-    segments.into_iter().map(|(p1, p2)| vec![p1.into(), p2.into()]).collect()
+    segments
+        .into_iter()
+        .map(|(p1, p2)| vec![p1.into(), p2.into()])
+        .collect()
 }
 
 /// Updates the intersection lines for a surface based on a plane intersection.
@@ -156,25 +169,43 @@ pub fn split_mesh_by_plane(mesh: &Mesh, plane: &Plane) -> (Mesh, Mesh) {
             add_triangle(&mut neg_vertices, &mut neg_indices, v0, v1, v2);
         } else {
             // Crossing triangle - proper clipping
-            clip_and_add_triangle(&mut pos_vertices, &mut pos_indices, &mut neg_vertices, &mut neg_indices, [v0, v1, v2], [d0, d1, d2], plane);
+            clip_and_add_triangle(
+                &mut pos_vertices,
+                &mut pos_indices,
+                &mut neg_vertices,
+                &mut neg_indices,
+                [v0, v1, v2],
+                [d0, d1, d2],
+                plane,
+            );
         }
     }
 
     (
-        Mesh::new(pos_vertices.into_iter().map(|p| p.into()).collect(), pos_indices),
-        Mesh::new(neg_vertices.into_iter().map(|p| p.into()).collect(), neg_indices),
+        Mesh::new(
+            pos_vertices.into_iter().map(|p| p.into()).collect(),
+            pos_indices,
+        ),
+        Mesh::new(
+            neg_vertices.into_iter().map(|p| p.into()).collect(),
+            neg_indices,
+        ),
     )
 }
 
 fn clip_and_add_triangle(
-    pos_v: &mut Vec<Point3<f32>>, pos_i: &mut Vec<u32>,
-    neg_v: &mut Vec<Point3<f32>>, neg_i: &mut Vec<u32>,
-    v: [Point3<f32>; 3], d: [f32; 3], _plane: &Plane
+    pos_v: &mut Vec<Point3<f32>>,
+    pos_i: &mut Vec<u32>,
+    neg_v: &mut Vec<Point3<f32>>,
+    neg_i: &mut Vec<u32>,
+    v: [Point3<f32>; 3],
+    d: [f32; 3],
+    _plane: &Plane,
 ) {
     // Sort vertices by distance to plane
     let mut indices = [0, 1, 2];
     indices.sort_by(|&a, &b| d[a].partial_cmp(&d[b]).unwrap());
-    
+
     let (v0, v1, v2) = (v[indices[0]], v[indices[1]], v[indices[2]]);
     let (d0, d1, d2) = (d[indices[0]], d[indices[1]], d[indices[2]]);
 
@@ -182,13 +213,13 @@ fn clip_and_add_triangle(
         // Two vertices on negative side (v0, v1), one on positive (v2)
         let t1 = d0 / (d0 - d2);
         let i1 = v0 + (v2 - v0) * t1;
-        
+
         let t2 = d1 / (d1 - d2);
         let i2 = v1 + (v2 - v1) * t2;
-        
+
         // Positive side: triangle (v2, i1, i2)
         add_triangle(pos_v, pos_i, v2, i1, i2);
-        
+
         // Negative side: quad (v0, v1, i2, i1) -> triangles (v0, v1, i2) and (v0, i2, i1)
         add_triangle(neg_v, neg_i, v0, v1, i2);
         add_triangle(neg_v, neg_i, v0, i2, i1);
@@ -196,20 +227,26 @@ fn clip_and_add_triangle(
         // One vertex on negative side (v0), two on positive (v1, v2)
         let t1 = d0 / (d0 - d1);
         let i1 = v0 + (v1 - v0) * t1;
-        
+
         let t2 = d0 / (d0 - d2);
         let i2 = v0 + (v2 - v0) * t2;
-        
+
         // Negative side: triangle (v0, i1, i2)
         add_triangle(neg_v, neg_i, v0, i1, i2);
-        
+
         // Positive side: quad (v1, v2, i2, i1) -> triangles (v1, v2, i2) and (v1, i2, i1)
         add_triangle(pos_v, pos_i, v1, v2, i2);
         add_triangle(pos_v, pos_i, v1, i2, i1);
     }
 }
 
-fn add_triangle(vertices: &mut Vec<Point3<f32>>, indices: &mut Vec<u32>, v0: Point3<f32>, v1: Point3<f32>, v2: Point3<f32>) {
+fn add_triangle(
+    vertices: &mut Vec<Point3<f32>>,
+    indices: &mut Vec<u32>,
+    v0: Point3<f32>,
+    v1: Point3<f32>,
+    v2: Point3<f32>,
+) {
     let start_idx = vertices.len() as u32;
     vertices.push(v0);
     vertices.push(v1);
@@ -226,7 +263,7 @@ mod tests {
     #[test]
     fn test_triangle_plane_intersection() {
         let plane = Plane::new(Point3::origin(), Vector3::z());
-        
+
         // Triangle crossing Z=0
         let v0 = Point3::new(0.0, 0.0, -1.0);
         let v1 = Point3::new(1.0, 0.0, 1.0);
@@ -245,7 +282,7 @@ mod tests {
     #[test]
     fn test_vertical_intersection() {
         let plane = Plane::new(Point3::origin(), Vector3::x()); // Vertical plane X=0
-        
+
         // Triangle crossing X=0
         let v0 = Point3::new(-1.0, 0.0, 0.0);
         let v1 = Point3::new(1.0, 1.0, 0.0);
@@ -263,13 +300,9 @@ mod tests {
     #[test]
     fn test_split_mesh_by_plane() {
         let plane = Plane::new(Point3::origin(), Vector3::z());
-        
+
         // Single triangle crossing Z=0
-        let vertices = vec![
-            [0.0, 0.0, -1.0],
-            [1.0, 0.0, 1.0],
-            [0.0, 1.0, 1.0],
-        ];
+        let vertices = vec![[0.0, 0.0, -1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]];
         let indices = vec![0, 1, 2];
         let mesh = Mesh::new(vertices, indices);
 

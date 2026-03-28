@@ -21,15 +21,15 @@ pub struct Well {
 /// Well surface location
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WellLocation {
-    pub x: f64, // Easting (UTM or local coordinates)
-    pub y: f64, // Northing
+    pub x: f64,      // Easting (UTM or local coordinates)
+    pub y: f64,      // Northing
     pub crs: String, // Coordinate Reference System
 }
 
 /// Well datum information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WellDatum {
-    pub name: String, // e.g., "KB", "GL", "MSL"
+    pub name: String,   // e.g., "KB", "GL", "MSL"
     pub elevation: f32, // Elevation relative to sea level (meters)
 }
 
@@ -40,7 +40,7 @@ pub struct WellLog {
     pub mnemonic: String, // e.g., "GR", "DT", "RHOB"
     pub description: String,
     pub units: String,
-    pub data: Vec<f32>, // Log values
+    pub data: Vec<f32>,   // Log values
     pub depths: Vec<f32>, // Depth values (in meters)
     pub min_depth: f32,
     pub max_depth: f32,
@@ -50,9 +50,9 @@ pub struct WellLog {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WellTop {
     pub id: Uuid,
-    pub name: String, // Formation name
-    pub depth: f32, // Depth in meters
-    pub type_: String, // "TOP", "BASE", "ZONE"
+    pub name: String,    // Formation name
+    pub depth: f32,      // Depth in meters
+    pub type_: String,   // "TOP", "BASE", "ZONE"
     pub color: [f32; 4], // RGBA color for visualization
 }
 
@@ -78,8 +78,14 @@ impl Well {
     }
 
     pub fn add_log(&mut self, mnemonic: String, units: String, data: Vec<f32>, depths: Vec<f32>) {
-        let min_depth = *depths.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
-        let max_depth = *depths.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
+        let min_depth = *depths
+            .iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or(&0.0);
+        let max_depth = *depths
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or(&0.0);
 
         self.logs.push(WellLog {
             id: Uuid::new_v4(),
@@ -106,8 +112,14 @@ impl Well {
 
 impl WellLog {
     pub fn new(mnemonic: String, units: String, data: Vec<f32>, depths: Vec<f32>) -> Self {
-        let min_depth = *depths.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
-        let max_depth = *depths.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
+        let min_depth = *depths
+            .iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or(&0.0);
+        let max_depth = *depths
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap_or(&0.0);
 
         Self {
             id: Uuid::new_v4(),
@@ -128,7 +140,13 @@ mod tests {
 
     #[test]
     fn test_well_creation() {
-        let well = Well::new("Well-1".to_string(), "W1".to_string(), 500000.0, 1000000.0, 100.0);
+        let well = Well::new(
+            "Well-1".to_string(),
+            "W1".to_string(),
+            500000.0,
+            1000000.0,
+            100.0,
+        );
         assert_eq!(well.name, "Well-1");
         assert_eq!(well.symbol, "W1");
         assert_eq!(well.datum.elevation, 100.0);
@@ -137,11 +155,22 @@ mod tests {
 
     #[test]
     fn test_well_log_addition() {
-        let mut well = Well::new("Well-1".to_string(), "W1".to_string(), 500000.0, 1000000.0, 100.0);
+        let mut well = Well::new(
+            "Well-1".to_string(),
+            "W1".to_string(),
+            500000.0,
+            1000000.0,
+            100.0,
+        );
         let depths = vec![0.0, 100.0, 200.0, 300.0];
         let gr_values = vec![50.0, 60.0, 70.0, 80.0];
 
-        well.add_log("GR".to_string(), "GAPI".to_string(), gr_values.clone(), depths.clone());
+        well.add_log(
+            "GR".to_string(),
+            "GAPI".to_string(),
+            gr_values.clone(),
+            depths.clone(),
+        );
 
         assert_eq!(well.logs.len(), 1);
         assert_eq!(well.logs[0].mnemonic, "GR");
@@ -152,8 +181,19 @@ mod tests {
 
     #[test]
     fn test_well_top_addition() {
-        let mut well = Well::new("Well-1".to_string(), "W1".to_string(), 500000.0, 1000000.0, 100.0);
-        well.add_top("Formation A".to_string(), 1500.0, "TOP".to_string(), [1.0, 0.0, 0.0, 1.0]);
+        let mut well = Well::new(
+            "Well-1".to_string(),
+            "W1".to_string(),
+            500000.0,
+            1000000.0,
+            100.0,
+        );
+        well.add_top(
+            "Formation A".to_string(),
+            1500.0,
+            "TOP".to_string(),
+            [1.0, 0.0, 0.0, 1.0],
+        );
 
         assert_eq!(well.tops.len(), 1);
         assert_eq!(well.tops[0].name, "Formation A");

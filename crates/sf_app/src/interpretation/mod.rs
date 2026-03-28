@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use sf_core::domain::surface::Mesh;
+use uuid::Uuid;
 
-pub mod velocity;
 pub mod history;
+pub mod velocity;
 pub mod wells;
 
-pub use velocity::VelocityState;
 pub use history::HistoryManager;
+pub use velocity::VelocityState;
 pub use wells::WellState;
 
 // InterpretationCommand is reserved for future history system
@@ -81,7 +81,12 @@ impl Horizon {
         let max_rbf_points = 500;
         let points: Vec<[f32; 3]> = if self.picks.len() > max_rbf_points {
             let step = self.picks.len() / max_rbf_points;
-            self.picks.iter().step_by(step).take(max_rbf_points).map(|p| p.position).collect()
+            self.picks
+                .iter()
+                .step_by(step)
+                .take(max_rbf_points)
+                .map(|p| p.position)
+                .collect()
         } else {
             self.picks.iter().map(|p| p.position).collect()
         };
@@ -104,14 +109,8 @@ impl Horizon {
             let dx = ((max_x - min_x) * 0.1).max(10.0);
             let dy = ((max_y - min_y) * 0.1).max(10.0);
 
-            self.meshes = vec![interp.generate_mesh(
-                min_x - dx,
-                max_x + dx,
-                min_y - dy,
-                max_y + dy,
-                20,
-                20,
-            )];
+            self.meshes =
+                vec![interp.generate_mesh(min_x - dx, max_x + dx, min_y - dy, max_y + dy, 20, 20)];
         }
     }
 }
@@ -240,23 +239,27 @@ impl InterpretationState {
     /// Get active horizon - reserved for future UI
     #[allow(dead_code)]
     pub fn active_horizon(&self) -> Option<&Horizon> {
-        self.active_horizon_id.and_then(|id| self.horizons.iter().find(|h| h.id == id))
+        self.active_horizon_id
+            .and_then(|id| self.horizons.iter().find(|h| h.id == id))
     }
 
     pub fn active_horizon_mut(&mut self) -> Option<&mut Horizon> {
-        self.active_horizon_id.and_then(|id| self.horizons.iter_mut().find(|h| h.id == id))
+        self.active_horizon_id
+            .and_then(|id| self.horizons.iter_mut().find(|h| h.id == id))
     }
 
     /// Get active fault - reserved for future UI
     #[allow(dead_code)]
     pub fn active_fault(&self) -> Option<&Fault> {
-        self.active_fault_id.and_then(|id| self.faults.iter().find(|f| f.id == id))
+        self.active_fault_id
+            .and_then(|id| self.faults.iter().find(|f| f.id == id))
     }
 
     /// Get mutable active fault - reserved for future UI
     #[allow(dead_code)]
     pub fn active_fault_mut(&mut self) -> Option<&mut Fault> {
-        self.active_fault_id.and_then(|id| self.faults.iter_mut().find(|f| f.id == id))
+        self.active_fault_id
+            .and_then(|id| self.faults.iter_mut().find(|f| f.id == id))
     }
 }
 

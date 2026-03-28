@@ -21,10 +21,6 @@ impl VelocityState {
         if !self.is_depth_mode {
             return pos;
         }
-        [
-            pos[0],
-            pos[1],
-            self.model.sample_to_depth(pos[2]),
-        ]
+        [pos[0], pos[1], self.model.sample_to_depth(pos[2])]
     }
 }

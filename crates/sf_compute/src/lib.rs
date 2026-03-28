@@ -15,8 +15,8 @@ pub mod volumetrics;
 
 pub use clipping::{intersect_mesh_plane, update_surface_intersections, Plane};
 pub use interpolation::{RbfInterpolator, RbfType};
-pub use resampling::{resample_trajectory, interpolate_station};
-pub use synthetic::{SyntheticSeismic, SyntheticWellLog, SyntheticHorizonPicks};
+pub use resampling::{interpolate_station, resample_trajectory};
+pub use synthetic::{SyntheticHorizonPicks, SyntheticSeismic, SyntheticWellLog};
 pub use throw::calculate_throw_distribution;
 pub use tracking::{snap_to_extrema, track_event};
 pub use triangulation::triangulate_points;

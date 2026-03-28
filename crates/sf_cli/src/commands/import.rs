@@ -1,21 +1,26 @@
 //! Data import commands
 
 use crate::ImportType;
-use sf_io::{LasParser, TrajectoryParser, SurfaceParser};
-use sf_storage::{Project, BlobStore};
+use sf_io::{LasParser, SurfaceParser, TrajectoryParser};
+use sf_storage::{BlobStore, Project};
 use std::path::PathBuf;
 
 pub fn execute(project_path: String, import_type: ImportType) -> anyhow::Result<()> {
     let project = Project::open(PathBuf::from(&project_path))?;
     let blob_store = BlobStore::new(project.path.join("blobs"));
-    
+
     match import_type {
         ImportType::Las { file, well } => {
             println!("Importing LAS file '{}' for well '{}'", file, well);
             let log = LasParser::parse(&PathBuf::from(file))?;
             println!("✓ Imported {} curves", log.curves.len());
             for curve in &log.curves {
-                println!("  - {}: {} values [{}]", curve.mnemonic, curve.values.len(), curve.unit);
+                println!(
+                    "  - {}: {} values [{}]",
+                    curve.mnemonic,
+                    curve.values.len(),
+                    curve.unit
+                );
             }
         }
         ImportType::Trajectory { file, well } => {
@@ -33,41 +38,41 @@ pub fn execute(project_path: String, import_type: ImportType) -> anyhow::Result<
         ImportType::Surface { file, name } => {
             println!("Importing surface '{}' from '{}'", name, file);
             let mesh = SurfaceParser::parse(&PathBuf::from(file))?;
-            
+
             // Serialize mesh to binary
             let mesh_bytes = serialize_mesh(&mesh);
             let hash = blob_store.store(&mesh_bytes)?;
-            
+
             println!("✓ Imported surface with {} vertices", mesh.vertices.len());
             println!("  Mesh hash: {}", hash);
             println!("  Triangles: {}", mesh.indices.len() / 3);
         }
     }
-    
+
     Ok(())
 }
 
 fn serialize_mesh(mesh: &sf_core::domain::surface::Mesh) -> Vec<u8> {
     // Simple binary serialization
     let mut bytes = Vec::new();
-    
+
     // Write vertex count
     bytes.extend_from_slice(&(mesh.vertices.len() as u32).to_le_bytes());
-    
+
     // Write vertices
     for vertex in &mesh.vertices {
         for &coord in vertex {
             bytes.extend_from_slice(&coord.to_le_bytes());
         }
     }
-    
+
     // Write index count
     bytes.extend_from_slice(&(mesh.indices.len() as u32).to_le_bytes());
-    
+
     // Write indices
     for &index in &mesh.indices {
         bytes.extend_from_slice(&index.to_le_bytes());
     }
-    
+
     bytes
 }

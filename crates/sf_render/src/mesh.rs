@@ -1,8 +1,8 @@
 //! Mesh rendering utilities
 
 use sf_core::domain::surface::Mesh;
-use wgpu::{Device, Buffer, BufferUsages};
 use wgpu::util::DeviceExt;
+use wgpu::{Buffer, BufferUsages, Device};
 
 /// GPU mesh renderer
 pub struct MeshRenderer {
@@ -32,24 +32,25 @@ impl MeshRenderer {
         };
 
         // Create vertex buffer
-        let vertex_data: Vec<f32> = mesh.vertices
+        let vertex_data: Vec<f32> = mesh
+            .vertices
             .iter()
             .flat_map(|v| v.iter().copied())
             .collect();
-        
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Mesh Vertex Buffer"),
             contents: bytemuck::cast_slice(&vertex_data),
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
         });
-        
+
         // Create index buffer
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Mesh Index Buffer"),
             contents: bytemuck::cast_slice(&mesh.indices),
             usage: BufferUsages::INDEX | BufferUsages::COPY_DST,
         });
-        
+
         Self {
             vertex_buffer,
             index_buffer,
@@ -57,15 +58,15 @@ impl MeshRenderer {
             center,
         }
     }
-    
+
     pub fn index_count(&self) -> u32 {
         self.index_count
     }
-    
+
     pub fn vertex_buffer(&self) -> &Buffer {
         &self.vertex_buffer
     }
-    
+
     pub fn index_buffer(&self) -> &Buffer {
         &self.index_buffer
     }
@@ -79,19 +80,15 @@ mod tests {
     #[test]
     fn test_mesh_center_calculation() {
         let mesh = Mesh::new(
-            vec![
-                [0.0, 0.0, 0.0],
-                [2.0, 0.0, 0.0],
-                [1.0, 3.0, 0.0],
-            ],
+            vec![[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [1.0, 3.0, 0.0]],
             vec![0, 1, 2],
         );
-        
+
         // We can't easily create a MeshRenderer without a Device in unit tests,
         // but we can verify the logic if we move it to a helper or just trust the inline calculation.
         // For now, let's at least verify Mesh is working as expected.
         assert_eq!(mesh.vertices.len(), 3);
-        
+
         let mut sum = [0.0; 3];
         for v in &mesh.vertices {
             sum[0] += v[0];
@@ -103,7 +100,7 @@ mod tests {
             sum[1] / mesh.vertices.len() as f32,
             sum[2] / mesh.vertices.len() as f32,
         ];
-        
+
         assert_eq!(center, [1.0, 1.0, 0.0]);
     }
 }

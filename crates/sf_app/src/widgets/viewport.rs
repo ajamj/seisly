@@ -1,5 +1,5 @@
-use eframe::egui_wgpu;
 use crate::interpretation::{InterpretationState, Pick, PickSource, PickingMode, VelocityState};
+use eframe::egui_wgpu;
 
 use sf_compute::seismic::SeismicVolume;
 use sf_compute::tracking::{snap_to_extrema, track_event};
@@ -49,7 +49,11 @@ impl ViewportWidget {
             if let Some(progress) = self.tracking_progress {
                 ui.separator();
                 ui.label("🔄 Auto-Tracking:");
-                ui.add(egui::ProgressBar::new(progress).show_percentage().desired_width(150.0));
+                ui.add(
+                    egui::ProgressBar::new(progress)
+                        .show_percentage()
+                        .desired_width(150.0),
+                );
                 if progress < 1.0 {
                     if ui.button("⏹ Cancel").clicked() {
                         self.tracking_progress = None;
@@ -61,7 +65,7 @@ impl ViewportWidget {
         });
 
         let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::drag());
-        
+
         let sample_count = volume.map(|v| v.provider.sample_count()).unwrap_or(500) as f32;
 
         if interpretation.picking_mode == PickingMode::SketchFault {
@@ -72,29 +76,47 @@ impl ViewportWidget {
                 if let Some(pos) = response.interact_pointer_pos() {
                     let rel_x = (pos.x - rect.min.x) / rect.width();
                     let rel_y = (pos.y - rect.min.y) / rect.height();
-                    
+
                     let (iline, xline, sample) = match self.view_mode {
                         ViewMode::Map => (rel_x * 500.0, rel_y * 500.0, 250.0),
                         ViewMode::Section => {
                             if velocity.is_depth_mode {
-                                // In depth mode, rel_y maps to meters. 
+                                // In depth mode, rel_y maps to meters.
                                 // To get sample, we'd need inverse velocity model, but for sketching we can just map to sample directly or keep as is.
                                 // Specification says "apply sample_to_depth during draw_overlays".
                                 // So internal storage is still Sample index.
-                                (rel_x * 500.0, self.section_xline as f32, rel_y * sample_count)
+                                (
+                                    rel_x * 500.0,
+                                    self.section_xline as f32,
+                                    rel_y * sample_count,
+                                )
                             } else {
-                                (rel_x * 500.0, self.section_xline as f32, rel_y * sample_count)
+                                (
+                                    rel_x * 500.0,
+                                    self.section_xline as f32,
+                                    rel_y * sample_count,
+                                )
                             }
                         }
                     };
-                    
+
                     // Simple distance check to avoid redundant points
-                    if self.sketch_points.is_empty() || 
-                       (pos.to_vec2() - self.project_to_screen([
-                           self.sketch_points.last().unwrap()[0],
-                           self.sketch_points.last().unwrap()[1],
-                           self.sketch_points.last().unwrap()[2],
-                       ], rect, sample_count, velocity).to_vec2()).length() > 5.0 
+                    if self.sketch_points.is_empty()
+                        || (pos.to_vec2()
+                            - self
+                                .project_to_screen(
+                                    [
+                                        self.sketch_points.last().unwrap()[0],
+                                        self.sketch_points.last().unwrap()[1],
+                                        self.sketch_points.last().unwrap()[2],
+                                    ],
+                                    rect,
+                                    sample_count,
+                                    velocity,
+                                )
+                                .to_vec2())
+                        .length()
+                            > 5.0
                     {
                         self.sketch_points.push([iline, xline, sample]);
                     }
@@ -103,7 +125,9 @@ impl ViewportWidget {
             if response.drag_released() {
                 if !self.sketch_points.is_empty() {
                     if let Some(fault) = interpretation.active_fault_mut() {
-                        fault.add_stick(crate::interpretation::FaultStick::new(self.sketch_points.clone()));
+                        fault.add_stick(crate::interpretation::FaultStick::new(
+                            self.sketch_points.clone(),
+                        ));
                         fault.update_mesh();
                     }
                     self.sketch_points.clear();
@@ -120,27 +144,39 @@ impl ViewportWidget {
         // Only draw seismic in Time mode
         if !velocity.is_depth_mode {
             if let Some(format) = self.target_format {
-                let callback = egui_wgpu::Callback::new_paint_callback(
-                    rect,
-                    ViewportCallback::new(format),
-                );
+                let callback =
+                    egui_wgpu::Callback::new_paint_callback(rect, ViewportCallback::new(format));
                 ui.painter().add(callback);
             }
         } else {
             // Draw a background for depth mode
-            ui.painter().rect_filled(rect, 0.0, egui::Color32::from_black_alpha(20));
-            ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, "Depth Mode: Seismic Hidden", egui::FontId::proportional(20.0), egui::Color32::GRAY);
+            ui.painter()
+                .rect_filled(rect, 0.0, egui::Color32::from_black_alpha(20));
+            ui.painter().text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                "Depth Mode: Seismic Hidden",
+                egui::FontId::proportional(20.0),
+                egui::Color32::GRAY,
+            );
         }
-        
+
         // Add a visual fallback to confirm the widget area is correctly allocated
-        ui.painter().rect_stroke(rect, 0.0, (1.0, egui::Color32::DARK_GRAY));
+        ui.painter()
+            .rect_stroke(rect, 0.0, (1.0, egui::Color32::DARK_GRAY));
 
         // 2D Overlay Visualization (Fallback for stub 3D renderer)
         self.draw_overlays(ui, rect, interpretation, sample_count, velocity);
         self.draw_fault_overlays(ui, rect, interpretation, sample_count, velocity);
     }
 
-    fn project_to_screen(&self, pos: [f32; 3], rect: egui::Rect, sample_count: f32, velocity: &VelocityState) -> egui::Pos2 {
+    fn project_to_screen(
+        &self,
+        pos: [f32; 3],
+        rect: egui::Rect,
+        sample_count: f32,
+        velocity: &VelocityState,
+    ) -> egui::Pos2 {
         let pos_p = velocity.project_to_depth(pos);
         match self.view_mode {
             ViewMode::Map => egui::pos2(
@@ -168,11 +204,20 @@ impl ViewportWidget {
         }
     }
 
-    fn draw_overlays(&self, ui: &mut egui::Ui, rect: egui::Rect, interpretation: &InterpretationState, sample_count: f32, velocity: &VelocityState) {
+    fn draw_overlays(
+        &self,
+        ui: &mut egui::Ui,
+        rect: egui::Rect,
+        interpretation: &InterpretationState,
+        sample_count: f32,
+        velocity: &VelocityState,
+    ) {
         let painter = ui.painter().with_clip_rect(rect);
 
         for horizon in &interpretation.horizons {
-            if !horizon.is_visible { continue; }
+            if !horizon.is_visible {
+                continue;
+            }
 
             let color = egui::Color32::from_rgba_unmultiplied(
                 (horizon.color[0] * 255.0) as u8,
@@ -186,7 +231,8 @@ impl ViewportWidget {
             // Draw Picks
             for pick in &horizon.picks {
                 if self.is_visible_in_view(pick.position) {
-                    let screen_pos = self.project_to_screen(pick.position, rect, sample_count, velocity);
+                    let screen_pos =
+                        self.project_to_screen(pick.position, rect, sample_count, velocity);
                     // Larger circle for active horizon picks
                     let radius = if is_active { 5.0 } else { 3.0 };
                     painter.circle_filled(screen_pos, radius, color);
@@ -203,13 +249,21 @@ impl ViewportWidget {
                         let p2 = mesh.vertices[chunk[1] as usize];
                         let p3 = mesh.vertices[chunk[2] as usize];
 
-                        if self.is_visible_in_view(p1) || self.is_visible_in_view(p2) || self.is_visible_in_view(p3) {
-                            let pts = [p1, p2, p3].map(|p| self.project_to_screen(p, rect, sample_count, velocity));
+                        if self.is_visible_in_view(p1)
+                            || self.is_visible_in_view(p2)
+                            || self.is_visible_in_view(p3)
+                        {
+                            let pts = [p1, p2, p3]
+                                .map(|p| self.project_to_screen(p, rect, sample_count, velocity));
 
                             // Thicker lines for active horizon
                             let line_width = if is_active { 1.5 } else { 0.5 };
-                            let line_color = if is_active { color } else { color.linear_multiply(0.3) };
-                            
+                            let line_color = if is_active {
+                                color
+                            } else {
+                                color.linear_multiply(0.3)
+                            };
+
                             painter.line_segment([pts[0], pts[1]], (line_width, line_color));
                             painter.line_segment([pts[1], pts[2]], (line_width, line_color));
                             painter.line_segment([pts[2], pts[0]], (line_width, line_color));
@@ -220,28 +274,38 @@ impl ViewportWidget {
 
             // Draw Intersection Lines
             for line in &horizon.intersection_lines {
-                let pts: Vec<egui::Pos2> = line.iter()
+                let pts: Vec<egui::Pos2> = line
+                    .iter()
                     .map(|&p| self.project_to_screen(p, rect, sample_count, velocity))
                     .collect();
                 for i in 0..pts.len().saturating_sub(1) {
-                    painter.line_segment([pts[i], pts[i+1]], (2.0, egui::Color32::WHITE));
+                    painter.line_segment([pts[i], pts[i + 1]], (2.0, egui::Color32::WHITE));
                 }
             }
         }
     }
 
-    fn draw_fault_overlays(&self, ui: &mut egui::Ui, rect: egui::Rect, interpretation: &InterpretationState, sample_count: f32, velocity: &VelocityState) {
+    fn draw_fault_overlays(
+        &self,
+        ui: &mut egui::Ui,
+        rect: egui::Rect,
+        interpretation: &InterpretationState,
+        sample_count: f32,
+        velocity: &VelocityState,
+    ) {
         let painter = ui.painter().with_clip_rect(rect);
 
         // Draw active sketch
         if !self.sketch_points.is_empty() {
             let color = egui::Color32::YELLOW;
-            let pts: Vec<egui::Pos2> = self.sketch_points.iter()
+            let pts: Vec<egui::Pos2> = self
+                .sketch_points
+                .iter()
                 .map(|&p| self.project_to_screen(p, rect, sample_count, velocity))
                 .collect();
 
             for i in 0..pts.len() - 1 {
-                painter.line_segment([pts[i], pts[i+1]], (2.0, color));
+                painter.line_segment([pts[i], pts[i + 1]], (2.0, color));
             }
             // Draw start and end points
             if let Some(first) = pts.first() {
@@ -253,7 +317,9 @@ impl ViewportWidget {
         }
 
         for fault in &interpretation.faults {
-            if !fault.is_visible { continue; }
+            if !fault.is_visible {
+                continue;
+            }
 
             let color = egui::Color32::from_rgba_unmultiplied(
                 (fault.color[0] * 255.0) as u8,
@@ -266,7 +332,9 @@ impl ViewportWidget {
 
             // Draw Sticks
             for stick in &fault.sticks {
-                let pts: Vec<egui::Pos2> = stick.picks.iter()
+                let pts: Vec<egui::Pos2> = stick
+                    .picks
+                    .iter()
                     .filter(|&&p| self.is_visible_in_view(p))
                     .map(|&p| self.project_to_screen(p, rect, sample_count, velocity))
                     .collect();
@@ -274,7 +342,7 @@ impl ViewportWidget {
                 if pts.len() > 1 {
                     let line_width = if is_active { 2.5 } else { 1.5 };
                     for i in 0..pts.len() - 1 {
-                        painter.line_segment([pts[i], pts[i+1]], (line_width, color));
+                        painter.line_segment([pts[i], pts[i + 1]], (line_width, color));
                     }
                 }
                 for pt in &pts {
@@ -294,12 +362,19 @@ impl ViewportWidget {
                         let p2 = mesh.vertices[chunk[1] as usize];
                         let p3 = mesh.vertices[chunk[2] as usize];
 
-                        if self.is_visible_in_view(p1) || self.is_visible_in_view(p2) || self.is_visible_in_view(p3) {
-                            let pts = [p1, p2, p3].map(|p| self.project_to_screen(p, rect, sample_count, velocity));
+                        if self.is_visible_in_view(p1)
+                            || self.is_visible_in_view(p2)
+                            || self.is_visible_in_view(p3)
+                        {
+                            let pts = [p1, p2, p3]
+                                .map(|p| self.project_to_screen(p, rect, sample_count, velocity));
 
-                            painter.line_segment([pts[0], pts[1]], (0.5, color.linear_multiply(0.5)));
-                            painter.line_segment([pts[1], pts[2]], (0.5, color.linear_multiply(0.5)));
-                            painter.line_segment([pts[2], pts[0]], (0.5, color.linear_multiply(0.5)));
+                            painter
+                                .line_segment([pts[0], pts[1]], (0.5, color.linear_multiply(0.5)));
+                            painter
+                                .line_segment([pts[1], pts[2]], (0.5, color.linear_multiply(0.5)));
+                            painter
+                                .line_segment([pts[2], pts[0]], (0.5, color.linear_multiply(0.5)));
                         }
                     }
                 }
@@ -307,11 +382,12 @@ impl ViewportWidget {
 
             // Draw Intersection Lines
             for line in &fault.intersection_lines {
-                let pts: Vec<egui::Pos2> = line.iter()
+                let pts: Vec<egui::Pos2> = line
+                    .iter()
                     .map(|&p| self.project_to_screen(p, rect, sample_count, velocity))
                     .collect();
                 for i in 0..pts.len().saturating_sub(1) {
-                    painter.line_segment([pts[i], pts[i+1]], (2.0, egui::Color32::WHITE));
+                    painter.line_segment([pts[i], pts[i + 1]], (2.0, egui::Color32::WHITE));
                 }
             }
         }
@@ -331,15 +407,11 @@ impl ViewportWidget {
         let sample_count = volume.map(|v| v.provider.sample_count()).unwrap_or(500);
 
         let (iline, xline, mut sample) = match self.view_mode {
-            ViewMode::Map => (
-                (rel_x * 500.0) as i32,
-                (rel_y * 500.0) as i32,
-                250usize,
-            ),
+            ViewMode::Map => ((rel_x * 500.0) as i32, (rel_y * 500.0) as i32, 250usize),
             ViewMode::Section => {
                 let s = if velocity.is_depth_mode {
                     // This is tricky: we click in Depth space, need to map back to Sample space.
-                    // For now, let's just map rel_y back to sample directly, effectively "ignoring" velocity for picking coordinates 
+                    // For now, let's just map rel_y back to sample directly, effectively "ignoring" velocity for picking coordinates
                     // until we have an inverse model, but the goal is "real-time depth projection for interpretation data".
                     (rel_y * sample_count as f32) as usize
                 } else {
@@ -353,12 +425,15 @@ impl ViewportWidget {
             if let Some(trace) = vol.provider.get_trace(iline, xline) {
                 // Snap to nearest extrema
                 sample = snap_to_extrema(&trace, sample, 20, true);
-                
+
                 if interpretation.picking_mode == PickingMode::AutoTrack {
                     let results = track_event(vol, iline, xline, sample, true, 0.5);
                     if let Some(horizon) = interpretation.active_horizon_mut() {
                         for (il, xl, s) in results {
-                            horizon.add_pick(Pick::new([il as f32, xl as f32, s as f32], PickSource::AutoTracked));
+                            horizon.add_pick(Pick::new(
+                                [il as f32, xl as f32, s as f32],
+                                PickSource::AutoTracked,
+                            ));
                         }
                         horizon.update_mesh();
                     }
@@ -374,7 +449,10 @@ impl ViewportWidget {
                 PickingMode::Seed => PickSource::Seed,
                 _ => PickSource::Manual,
             };
-            horizon.add_pick(Pick::new([iline as f32, xline as f32, sample as f32], source));
+            horizon.add_pick(Pick::new(
+                [iline as f32, xline as f32, sample as f32],
+                source,
+            ));
             horizon.update_mesh();
         }
     }

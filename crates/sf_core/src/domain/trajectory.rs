@@ -35,7 +35,8 @@ impl Trajectory {
     /// Add a station, maintaining MD order
     pub fn add_station(&mut self, md: f64, x: f64, y: f64, z: f64) {
         self.stations.push(Station { md, x, y, z });
-        self.stations.sort_by(|a, b| a.md.partial_cmp(&b.md).unwrap());
+        self.stations
+            .sort_by(|a, b| a.md.partial_cmp(&b.md).unwrap());
     }
 }
 
@@ -50,7 +51,7 @@ mod tests {
         traj.add_station(100.0, 0.0, 0.0, 100.0);
         traj.add_station(50.0, 0.0, 0.0, 50.0);
         traj.add_station(150.0, 0.0, 0.0, 150.0);
-        
+
         assert_eq!(traj.stations.len(), 3);
         assert_eq!(traj.stations[0].md, 50.0);
         assert_eq!(traj.stations[1].md, 100.0);

@@ -1,11 +1,11 @@
 //! Domain model entities
 
-pub mod well;
-pub mod trajectory;
 pub mod log;
 pub mod surface;
+pub mod trajectory;
+pub mod well;
 
+pub use log::{Curve, DepthMnemonic, Log};
+pub use surface::{BlobRef, Mesh, Surface};
+pub use trajectory::{Station, Trajectory};
 pub use well::Well;
-pub use trajectory::{Trajectory, Station};
-pub use log::{Log, Curve, DepthMnemonic};
-pub use surface::{Surface, Mesh, BlobRef};

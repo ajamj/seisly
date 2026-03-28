@@ -5,12 +5,12 @@ use std::path::PathBuf;
 
 pub fn execute(project_path: String, filter: Option<String>) -> anyhow::Result<()> {
     let project = Project::open(PathBuf::from(&project_path))?;
-    
+
     println!("StrataForge Project: {}", project.manifest.name);
     println!("Default CRS: {}", project.manifest.default_crs);
     println!("Version: {}", project.manifest.version);
     println!();
-    
+
     match filter.as_deref() {
         Some("wells") => {
             println!("Wells: (not yet implemented - requires SQLite queries)");
@@ -33,6 +33,6 @@ pub fn execute(project_path: String, filter: Option<String>) -> anyhow::Result<(
             println!("  - cache/: Derived data cache");
         }
     }
-    
+
     Ok(())
 }

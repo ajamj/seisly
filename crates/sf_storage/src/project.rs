@@ -53,9 +53,7 @@ impl ProjectManifest {
     pub fn load(project_path: &Path) -> Result<Self, ProjectError> {
         let manifest_path = project_path.join("project.yaml");
         if !manifest_path.exists() {
-            return Err(ProjectError::NotFound(
-                manifest_path.display().to_string(),
-            ));
+            return Err(ProjectError::NotFound(manifest_path.display().to_string()));
         }
         let content = std::fs::read_to_string(&manifest_path)?;
         let manifest: ProjectManifest = serde_yaml::from_str(&content)?;
@@ -124,13 +122,14 @@ mod tests {
     fn test_project_creation() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path().join("TestProject.sf");
-        
+
         let project = Project::create(
             project_path.clone(),
             "Test Project".to_string(),
             "EPSG:32648".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         assert_eq!(project.manifest.name, "Test Project");
         assert_eq!(project.manifest.default_crs, "EPSG:32648");
         assert!(project_path.join("project.yaml").exists());
@@ -142,13 +141,14 @@ mod tests {
     fn test_project_open() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path().join("TestProject.sf");
-        
+
         Project::create(
             project_path.clone(),
             "Test".to_string(),
             "EPSG:4326".to_string(),
-        ).unwrap();
-        
+        )
+        .unwrap();
+
         let project = Project::open(project_path.clone()).unwrap();
         assert_eq!(project.manifest.name, "Test");
     }
@@ -157,7 +157,7 @@ mod tests {
     fn test_project_not_found() {
         let temp_dir = TempDir::new().unwrap();
         let project_path = temp_dir.path().join("NonExistent.sf");
-        
+
         let result = Project::open(project_path);
         assert!(result.is_err());
     }

@@ -21,12 +21,12 @@ impl CrsRegistry {
     fn register_common(&mut self) {
         // WGS84 - Geographic
         self.register(Crs::from_epsg(4326));
-        
+
         // UTM zones (common examples)
         self.register(Crs::from_epsg(32648)); // UTM 48N
         self.register(Crs::from_epsg(32649)); // UTM 49N
         self.register(Crs::from_epsg(32650)); // UTM 50N
-        
+
         // Web Mercator (for web mapping)
         self.register(Crs::from_epsg(3857));
     }

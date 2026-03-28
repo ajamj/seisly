@@ -46,10 +46,10 @@ impl VolumetricEngine {
             let y = min_y + j as f32 * dy;
             for i in 0..steps_x {
                 let x = min_x + i as f32 * dx;
-                
+
                 let z_upper = upper_surface.evaluate(x, y);
                 let z_lower = lower_surface.evaluate(x, y);
-                
+
                 let thickness = z_upper - z_lower;
                 if thickness > 0.0 {
                     // Weighting: grid points on edges and corners should have less weight
@@ -91,7 +91,7 @@ mod tests {
         let lower = RbfInterpolator::new(&lower_points, RbfType::ThinPlateSpline).unwrap();
 
         let engine = VolumetricEngine::new();
-        
+
         // Grid 0 to 100, area 10000. steps=101 means dx=1.0.
         // Number of points = 101*101 = 10201.
         // Total volume should be 10.0 * 100.0 * 100.0 = 100,000.
@@ -99,12 +99,12 @@ mod tests {
         // cell_area = 1.0 * 1.0 = 1.0.
         // Summing 101 * 101 points each with area 1.0 gives 10201 * 10.0 = 102,010.
         // This is because we are including the boundary points fully.
-        
+
         let volume = engine.calculate_volume(&upper, &lower, 0.0, 100.0, 0.0, 100.0, 101, 101);
-        
+
         // Expected is closer to 100,000.
         // To get exactly 100,000 with a simple sum, we'd need to handle weights or use steps_x such that it covers the intervals.
-        
+
         println!("Calculated volume: {}", volume);
         assert!((volume - 100000.0).abs() < 5000.0); // Within 5%
     }
