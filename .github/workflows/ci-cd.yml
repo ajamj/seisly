@@ -55,6 +55,8 @@ jobs:
 
     - name: Check formatting
       run: cargo fmt --all -- --check
+      # Skip on Windows due to toolchain issues
+      if: runner.os != 'Windows'
 
     - name: Run Clippy
       run: cargo clippy --workspace --all-targets -- -W clippy::all
