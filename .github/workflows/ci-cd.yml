@@ -103,23 +103,26 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
     - name: Run Clippy
-      run: cargo clippy --workspace --all-targets -- -W clippy::all
+      run: cargo clippy --workspace --all-targets --target x86_64-pc-windows-msvc -- -W clippy::all
 
     - name: Build workspace
-      run: cargo build --workspace --verbose
+      run: cargo build --workspace --verbose --target x86_64-pc-windows-msvc
 
     - name: Run tests
-      run: cargo test --workspace --verbose --no-fail-fast
+      run: cargo test --workspace --verbose --no-fail-fast --target x86_64-pc-windows-msvc
 
     - name: Build release
-      run: cargo build --release --workspace
+      run: cargo build --release --workspace --target x86_64-pc-windows-msvc
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: strataforge-windows
-        path: target/release/sf-app*
+        path: target/x86_64-pc-windows-msvc/release/sf-app*
         if-no-files-found: ignore
 
   # ============================================
