@@ -3510,6 +3510,7 @@ dependencies = [
 name = "sf_compute"
 version = "0.1.0"
 dependencies = [
+ "nalgebra",
  "sf_core",
  "sf_io",
  "spade",

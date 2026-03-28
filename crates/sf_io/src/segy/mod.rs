@@ -1,2 +1,2 @@
-pub mod parser;
 pub mod mmap;
+pub mod parser;

@@ -1,9 +1,9 @@
 //! XYZ surface point parser
 
 use sf_core::domain::surface::Mesh;
-use thiserror::Error;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum XyzError {
@@ -21,18 +21,18 @@ impl SurfaceParser {
     pub fn parse(path: &Path) -> Result<Mesh, XyzError> {
         let file = std::fs::File::open(path)?;
         let reader = BufReader::new(file);
-        
+
         let mut vertices = Vec::new();
         let mut is_header = true;
-        
+
         for line in reader.lines() {
             let line = line?;
             let line = line.trim();
-            
+
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            
+
             if is_header {
                 // Check if first line is a header
                 let lower = line.to_lowercase();
@@ -42,25 +42,31 @@ impl SurfaceParser {
                 }
                 is_header = false;
             }
-            
+
             // Parse x,y,z coordinates
             let parts: Vec<&str> = line.split(',').collect();
             if parts.len() >= 3 {
-                let x: f32 = parts[0].trim().parse()
+                let x: f32 = parts[0]
+                    .trim()
+                    .parse()
                     .map_err(|_| XyzError::ParseError(format!("Invalid X: {}", parts[0])))?;
-                let y: f32 = parts[1].trim().parse()
+                let y: f32 = parts[1]
+                    .trim()
+                    .parse()
                     .map_err(|_| XyzError::ParseError(format!("Invalid Y: {}", parts[1])))?;
-                let z: f32 = parts[2].trim().parse()
+                let z: f32 = parts[2]
+                    .trim()
+                    .parse()
                     .map_err(|_| XyzError::ParseError(format!("Invalid Z: {}", parts[2])))?;
-                
+
                 vertices.push([x, y, z]);
             }
         }
-        
+
         if vertices.len() < 3 {
             return Err(XyzError::NotEnoughPoints);
         }
-        
+
         // Create simple triangulation (for now, just connect all points as a fan)
         // A proper implementation would use Delaunay triangulation from sf_compute
         let mut indices = Vec::new();
@@ -69,10 +75,10 @@ impl SurfaceParser {
             indices.push(i + 1);
             indices.push(i + 2);
         }
-        
+
         let mut mesh = Mesh::new(vertices, indices);
         mesh.compute_normals();
-        
+
         Ok(mesh)
     }
 }
@@ -80,8 +86,8 @@ impl SurfaceParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::io::Write;
+    use tempfile::TempDir;
 
     fn create_test_xyz(content: &str) -> TempDir {
         let temp_dir = TempDir::new().unwrap();
@@ -102,7 +108,7 @@ mod tests {
 ";
         let temp_dir = create_test_xyz(xyz_content);
         let xyz_path = temp_dir.path().join("test.xyz");
-        
+
         let mesh = SurfaceParser::parse(&xyz_path).unwrap();
         assert_eq!(mesh.vertices.len(), 5);
         assert!(!mesh.indices.is_empty());
@@ -117,7 +123,7 @@ mod tests {
 ";
         let temp_dir = create_test_xyz(xyz_content);
         let xyz_path = temp_dir.path().join("test.xyz");
-        
+
         let mesh = SurfaceParser::parse(&xyz_path).unwrap();
         assert_eq!(mesh.vertices.len(), 4);
     }
@@ -129,7 +135,7 @@ mod tests {
 ";
         let temp_dir = create_test_xyz(xyz_content);
         let xyz_path = temp_dir.path().join("test.xyz");
-        
+
         let result = SurfaceParser::parse(&xyz_path);
         assert!(result.is_err());
     }

@@ -24,12 +24,8 @@ impl RbfType {
                     r * r * r.ln()
                 }
             }
-            RbfType::Multiquadric { epsilon } => {
-                (1.0 + (epsilon * r).powi(2)).sqrt()
-            }
-            RbfType::Gaussian { epsilon } => {
-                (-(epsilon * r).powi(2)).exp()
-            }
+            RbfType::Multiquadric { epsilon } => (1.0 + (epsilon * r).powi(2)).sqrt(),
+            RbfType::Gaussian { epsilon } => (-(epsilon * r).powi(2)).exp(),
         }
     }
 }
@@ -69,7 +65,10 @@ impl RbfInterpolator {
             a[(i, i)] += 1e-6;
         }
 
-        let weights = a.lu().solve(&b).ok_or("Failed to solve RBF linear system")?;
+        let weights = a
+            .lu()
+            .solve(&b)
+            .ok_or("Failed to solve RBF linear system")?;
 
         Ok(Self {
             points: xy_points,
@@ -103,8 +102,16 @@ impl RbfInterpolator {
         let mut vertices = Vec::with_capacity(steps_x * steps_y);
         let mut indices = Vec::new();
 
-        let dx = if steps_x > 1 { (max_x - min_x) / (steps_x - 1) as f32 } else { 0.0 };
-        let dy = if steps_y > 1 { (max_y - min_y) / (steps_y - 1) as f32 } else { 0.0 };
+        let dx = if steps_x > 1 {
+            (max_x - min_x) / (steps_x - 1) as f32
+        } else {
+            0.0
+        };
+        let dy = if steps_y > 1 {
+            (max_y - min_y) / (steps_y - 1) as f32
+        } else {
+            0.0
+        };
 
         for j in 0..steps_y {
             let y = min_y + j as f32 * dy;
@@ -155,19 +162,33 @@ mod tests {
         ];
 
         // Thin Plate Spline
-        let interpolator = RbfInterpolator::new(&points, RbfType::ThinPlateSpline).expect("Failed to create interpolator");
+        let interpolator = RbfInterpolator::new(&points, RbfType::ThinPlateSpline)
+            .expect("Failed to create interpolator");
 
         // Test at original points (tolerance slightly higher due to regularization)
         for p in &points {
             let z = interpolator.evaluate(p[0], p[1]);
-            assert!((z - p[2]).abs() < 1e-3, "TPS evaluation at point {:?} failed: got {}, expected {}", p, z, p[2]);
+            assert!(
+                (z - p[2]).abs() < 1e-3,
+                "TPS evaluation at point {:?} failed: got {}, expected {}",
+                p,
+                z,
+                p[2]
+            );
         }
 
         // Multiquadric
-        let interpolator_mq = RbfInterpolator::new(&points, RbfType::Multiquadric { epsilon: 1.0 }).expect("Failed to create interpolator");
+        let interpolator_mq = RbfInterpolator::new(&points, RbfType::Multiquadric { epsilon: 1.0 })
+            .expect("Failed to create interpolator");
         for p in &points {
             let z = interpolator_mq.evaluate(p[0], p[1]);
-            assert!((z - p[2]).abs() < 1e-3, "MQ evaluation at point {:?} failed: got {}, expected {}", p, z, p[2]);
+            assert!(
+                (z - p[2]).abs() < 1e-3,
+                "MQ evaluation at point {:?} failed: got {}, expected {}",
+                p,
+                z,
+                p[2]
+            );
         }
     }
 
@@ -180,7 +201,8 @@ mod tests {
             [1.0, 1.0, 2.0],
         ];
 
-        let interpolator = RbfInterpolator::new(&points, RbfType::ThinPlateSpline).expect("Failed to create interpolator");
+        let interpolator = RbfInterpolator::new(&points, RbfType::ThinPlateSpline)
+            .expect("Failed to create interpolator");
         let mesh = interpolator.generate_mesh(0.0, 1.0, 0.0, 1.0, 5, 5);
 
         assert_eq!(mesh.vertices.len(), 25);

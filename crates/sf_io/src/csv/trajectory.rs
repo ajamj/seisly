@@ -2,9 +2,9 @@
 
 use sf_core::domain::trajectory::Trajectory;
 use sf_core::EntityId;
-use thiserror::Error;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TrajError {
@@ -22,51 +22,60 @@ impl TrajectoryParser {
     pub fn parse(path: &Path, well_id: EntityId) -> Result<Trajectory, TrajError> {
         let file = std::fs::File::open(path)?;
         let reader = BufReader::new(file);
-        
+
         let mut traj = Trajectory::new(well_id);
         let mut is_header = true;
         let mut data_count = 0;
-        
+
         for line in reader.lines() {
             let line = line?;
             let line = line.trim();
-            
+
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            
+
             if is_header {
                 // Check if first line looks like a header
-                if line.to_lowercase().contains("md") || 
-                   line.to_lowercase().starts_with("md,") ||
-                   line.to_lowercase().starts_with("md,x,y,z") {
+                if line.to_lowercase().contains("md")
+                    || line.to_lowercase().starts_with("md,")
+                    || line.to_lowercase().starts_with("md,x,y,z")
+                {
                     is_header = false;
                     continue;
                 }
                 is_header = false;
             }
-            
+
             // Parse data row: md,x,y,z
             let parts: Vec<&str> = line.split(',').collect();
             if parts.len() >= 4 {
-                let md: f64 = parts[0].trim().parse()
+                let md: f64 = parts[0]
+                    .trim()
+                    .parse()
                     .map_err(|_| TrajError::ParseError(format!("Invalid MD: {}", parts[0])))?;
-                let x: f64 = parts[1].trim().parse()
+                let x: f64 = parts[1]
+                    .trim()
+                    .parse()
                     .map_err(|_| TrajError::ParseError(format!("Invalid X: {}", parts[1])))?;
-                let y: f64 = parts[2].trim().parse()
+                let y: f64 = parts[2]
+                    .trim()
+                    .parse()
                     .map_err(|_| TrajError::ParseError(format!("Invalid Y: {}", parts[2])))?;
-                let z: f64 = parts[3].trim().parse()
+                let z: f64 = parts[3]
+                    .trim()
+                    .parse()
                     .map_err(|_| TrajError::ParseError(format!("Invalid Z: {}", parts[3])))?;
-                
+
                 traj.add_station(md, x, y, z);
                 data_count += 1;
             }
         }
-        
+
         if data_count == 0 {
             return Err(TrajError::NoData);
         }
-        
+
         Ok(traj)
     }
 }
@@ -74,8 +83,8 @@ impl TrajectoryParser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::io::Write;
+    use tempfile::TempDir;
 
     fn create_test_csv(content: &str) -> TempDir {
         let temp_dir = TempDir::new().unwrap();
@@ -97,7 +106,7 @@ mod tests {
         let temp_dir = create_test_csv(csv_content);
         let csv_path = temp_dir.path().join("test.csv");
         let well_id = EntityId::new_v4();
-        
+
         let traj = TrajectoryParser::parse(&csv_path, well_id).unwrap();
         assert_eq!(traj.stations.len(), 5);
         assert_eq!(traj.stations[0].md, 0.0);
@@ -113,7 +122,7 @@ mod tests {
         let temp_dir = create_test_csv(csv_content);
         let csv_path = temp_dir.path().join("test.csv");
         let well_id = EntityId::new_v4();
-        
+
         let traj = TrajectoryParser::parse(&csv_path, well_id).unwrap();
         assert_eq!(traj.stations.len(), 3);
     }
@@ -125,7 +134,7 @@ mod tests {
         let temp_dir = create_test_csv(csv_content);
         let csv_path = temp_dir.path().join("test.csv");
         let well_id = EntityId::new_v4();
-        
+
         let result = TrajectoryParser::parse(&csv_path, well_id);
         assert!(result.is_err());
     }

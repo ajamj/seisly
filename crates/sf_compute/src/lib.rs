@@ -1,12 +1,12 @@
 //! StrataForge Compute Module
-//! 
+//!
 //! Provides algorithms for triangulation, resampling, and other computations.
 
-pub mod triangulation;
+pub mod interpolation;
 pub mod resampling;
 pub mod seismic;
-pub mod interpolation;
+pub mod triangulation;
 
-pub use triangulation::triangulate_points;
-pub use resampling::resample_trajectory;
 pub use interpolation::{RbfInterpolator, RbfType};
+pub use resampling::resample_trajectory;
+pub use triangulation::triangulate_points;

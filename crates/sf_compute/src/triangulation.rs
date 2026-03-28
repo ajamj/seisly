@@ -1,7 +1,7 @@
 //! Delaunay triangulation for surface building
 
 use sf_core::domain::surface::Mesh;
-use spade::{DelaunayTriangulation, Point2, HasPosition, Triangulation};
+use spade::{DelaunayTriangulation, HasPosition, Point2, Triangulation};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -25,29 +25,30 @@ impl HasPosition for IndexedPoint {
 }
 
 /// Triangulate 3D points using Delaunay triangulation
-/// 
+///
 /// Projects points to 2D (XY plane) for triangulation,
 /// then reconstructs 3D mesh with original Z values.
 pub fn triangulate_points(points: &[[f32; 3]]) -> Result<Mesh, TriangulationError> {
     if points.len() < 3 {
         return Err(TriangulationError::NotEnoughPoints);
     }
-    
+
     // Convert to 2D points for Delaunay (using x, y) with original indices
-    let points_2d: Vec<IndexedPoint> = points.iter()
+    let points_2d: Vec<IndexedPoint> = points
+        .iter()
         .enumerate()
         .map(|(i, p)| IndexedPoint {
             point: Point2::new(p[0] as f64, p[1] as f64),
             index: i,
         })
         .collect();
-    
+
     let triangulation = DelaunayTriangulation::<IndexedPoint>::bulk_load(points_2d)
         .map_err(|e| TriangulationError::SpadeError(e.to_string()))?;
-    
+
     let vertices = points.to_vec();
     let mut indices = Vec::new();
-    
+
     // Extract triangle indices from triangulation
     for face in triangulation.inner_faces() {
         let face_vertices = face.vertices();
@@ -55,10 +56,10 @@ pub fn triangulate_points(points: &[[f32; 3]]) -> Result<Mesh, TriangulationErro
         indices.push(face_vertices[1].data().index as u32);
         indices.push(face_vertices[2].data().index as u32);
     }
-    
+
     let mut mesh = Mesh::new(vertices, indices);
     mesh.compute_normals();
-    
+
     Ok(mesh)
 }
 
@@ -74,7 +75,7 @@ mod tests {
             [0.0, 100.0, 103.0],
             [100.0, 100.0, 108.0],
         ];
-        
+
         let mesh = triangulate_points(&points).unwrap();
         assert_eq!(mesh.vertices.len(), 4);
         assert!(!mesh.indices.is_empty());
@@ -84,11 +85,8 @@ mod tests {
 
     #[test]
     fn test_triangulation_not_enough_points() {
-        let points = vec![
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-        ];
-        
+        let points = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];
+
         let result = triangulate_points(&points);
         assert!(result.is_err());
     }

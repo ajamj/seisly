@@ -21,7 +21,7 @@ impl SeismicVolume {
         let (min_inline, max_inline) = self.provider.inline_range();
         let (min_xline, max_xline) = self.provider.crossline_range();
         let sample_count = self.provider.sample_count();
-        
+
         let inline = min_inline + inline_idx as i32;
         if inline > max_inline {
             return Vec::new();
@@ -29,7 +29,7 @@ impl SeismicVolume {
 
         let xline_count = (max_xline - min_xline + 1) as usize;
         let mut slice = Vec::with_capacity(xline_count * sample_count);
-        
+
         for xline in min_xline..=max_xline {
             if let Some(trace) = self.provider.get_trace(inline, xline) {
                 slice.extend(trace);
@@ -46,7 +46,7 @@ impl SeismicVolume {
         let (min_inline, max_inline) = self.provider.inline_range();
         let (min_xline, max_xline) = self.provider.crossline_range();
         let sample_count = self.provider.sample_count();
-        
+
         let xline = min_xline + crossline_idx as i32;
         if xline > max_xline {
             return Vec::new();
@@ -54,7 +54,7 @@ impl SeismicVolume {
 
         let inline_count = (max_inline - min_inline + 1) as usize;
         let mut slice = Vec::with_capacity(inline_count * sample_count);
-        
+
         for inline in min_inline..=max_inline {
             if let Some(trace) = self.provider.get_trace(inline, xline) {
                 slice.extend(trace);
@@ -92,28 +92,37 @@ pub struct InMemoryProvider {
 
 impl TraceProvider for InMemoryProvider {
     fn get_trace(&self, inline: i32, xline: i32) -> Option<Vec<f32>> {
-        if inline < self.inline_range.0 || inline > self.inline_range.1 ||
-           xline < self.crossline_range.0 || xline > self.crossline_range.1 {
+        if inline < self.inline_range.0
+            || inline > self.inline_range.1
+            || xline < self.crossline_range.0
+            || xline > self.crossline_range.1
+        {
             return None;
         }
-        
+
         let i_idx = (inline - self.inline_range.0) as usize;
         let x_idx = (xline - self.crossline_range.0) as usize;
         let xline_count = (self.crossline_range.1 - self.crossline_range.0 + 1) as usize;
-        
+
         let start = (i_idx * xline_count + x_idx) * self.sample_count;
         let end = start + self.sample_count;
-        
+
         if end <= self.data.len() {
             Some(self.data[start..end].to_vec())
         } else {
             None
         }
     }
-    
-    fn inline_range(&self) -> (i32, i32) { self.inline_range }
-    fn crossline_range(&self) -> (i32, i32) { self.crossline_range }
-    fn sample_count(&self) -> usize { self.sample_count }
+
+    fn inline_range(&self) -> (i32, i32) {
+        self.inline_range
+    }
+    fn crossline_range(&self) -> (i32, i32) {
+        self.crossline_range
+    }
+    fn sample_count(&self) -> usize {
+        self.sample_count
+    }
 }
 
 #[cfg(test)]
@@ -126,7 +135,7 @@ mod tests {
         let inline_range = (0, 1);
         let crossline_range = (0, 1);
         let data = (0..8).map(|x| x as f32).collect(); // 2*2*2 = 8
-        
+
         let provider = Box::new(InMemoryProvider {
             data,
             inline_range,
@@ -146,7 +155,7 @@ mod tests {
         let inline_range = (0, 1);
         let crossline_range = (0, 1);
         let data = (0..8).map(|x| x as f32).collect();
-        
+
         let provider = Box::new(InMemoryProvider {
             data,
             inline_range,
@@ -167,38 +176,41 @@ mod tests {
         use tempfile::NamedTempFile;
 
         let mut tmp = NamedTempFile::new().unwrap();
-        
+
         let sample_count = 10u16;
         let mut content = vec![0u8; 3600];
-        
+
         // Binary header
-        content[3216] = 0x0F; content[3217] = 0xA0; // interval 4000
-        content[3220] = 0x00; content[3221] = sample_count as u8; // count 10
-        content[3224] = 0x00; content[3225] = 0x05; // format 5 (IEEE)
-        
+        content[3216] = 0x0F;
+        content[3217] = 0xA0; // interval 4000
+        content[3220] = 0x00;
+        content[3221] = sample_count as u8; // count 10
+        content[3224] = 0x00;
+        content[3225] = 0x05; // format 5 (IEEE)
+
         // Trace 1: Inline 100, Xline 200
         let mut trace1_head = vec![0u8; 240];
         let iline = 100i32.to_be_bytes();
         let xline = 200i32.to_be_bytes();
         trace1_head[188..192].copy_from_slice(&iline);
         trace1_head[192..196].copy_from_slice(&xline);
-        
+
         let mut trace1_data = vec![0u8; sample_count as usize * 4];
         let val = 1.5f32.to_be_bytes();
         trace1_data[0..4].copy_from_slice(&val);
-        
+
         content.extend_from_slice(&trace1_head);
         content.extend_from_slice(&trace1_data);
-        
+
         tmp.write_all(&content).unwrap();
-        
+
         let segy = MmappedSegy::new(tmp.path()).unwrap();
         let volume = SeismicVolume::new(Box::new(segy));
-        
+
         // Querying inline 100, which is relative 0
         let inline0 = volume.get_inline(0);
-        // We only have one trace at (100, 200). 
-        // Inline 100 should contain all xlines in range. 
+        // We only have one trace at (100, 200).
+        // Inline 100 should contain all xlines in range.
         // Our mmap segy only has one trace, so crossline range is (200, 200).
         // So inline 0 (100) should have one trace (200).
         assert_eq!(inline0.len(), sample_count as usize);

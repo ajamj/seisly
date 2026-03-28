@@ -1,8 +1,8 @@
+use anyhow::Result;
 use memmap2::Mmap;
+use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
-use std::collections::HashMap;
-use anyhow::Result;
 
 pub struct MmappedSegy {
     mmap: Mmap,
@@ -46,7 +46,7 @@ impl MmappedSegy {
 
         for i in 0..trace_count {
             let offset = 3600 + (i * trace_size);
-            
+
             // Standard SEG-Y Inline/Crossline locations: 189 and 193 (0-based: 188 and 192)
             let iline = i32::from_be_bytes([
                 mmap[offset + 188],
@@ -62,7 +62,7 @@ impl MmappedSegy {
             ]);
 
             index.insert((iline, xline), i);
-            
+
             min_inline = min_inline.min(iline);
             max_inline = max_inline.max(iline);
             min_xline = min_xline.min(xline);
@@ -88,7 +88,7 @@ impl MmappedSegy {
 
         let trace_size = 240 + (self.sample_count * 4);
         let data_offset = 3600 + (trace_index * trace_size) + 240;
-        
+
         let mut data = Vec::with_capacity(self.sample_count);
         for i in 0..self.sample_count {
             let start = data_offset + (i * 4);
@@ -98,7 +98,7 @@ impl MmappedSegy {
                 self.mmap[start + 2],
                 self.mmap[start + 3],
             ];
-            
+
             let val = if self.format == 5 {
                 f32::from_be_bytes(bytes)
             } else if self.format == 1 {
@@ -127,7 +127,7 @@ fn ibm_to_ieee_f32(ibm: u32) -> f32 {
     let sign = (ibm >> 31) & 0x01;
     let exponent = (ibm >> 24) & 0x7F;
     let fraction = (ibm & 0x00FFFFFF) as f32 / 16777216.0;
-    
+
     let sign_f = if sign == 1 { -1.0 } else { 1.0 };
     sign_f * fraction * 16.0f32.powi(exponent as i32 - 64)
 }
@@ -141,37 +141,40 @@ mod tests {
     #[test]
     fn test_mmap_segy_indexing() {
         let mut tmp = NamedTempFile::new().unwrap();
-        
+
         // 3200 text + 400 binary + 1 trace (240 head + 10 samples * 4)
         let sample_count = 10u16;
         let mut content = vec![0u8; 3600];
-        
+
         // Binary header
-        content[3216] = 0x0F; content[3217] = 0xA0; // interval 4000
-        content[3220] = 0x00; content[3221] = sample_count as u8; // count 10
-        content[3224] = 0x00; content[3225] = 0x05; // format 5 (IEEE)
-        
+        content[3216] = 0x0F;
+        content[3217] = 0xA0; // interval 4000
+        content[3220] = 0x00;
+        content[3221] = sample_count as u8; // count 10
+        content[3224] = 0x00;
+        content[3225] = 0x05; // format 5 (IEEE)
+
         // Trace 1: Inline 100, Xline 200
         let mut trace1_head = vec![0u8; 240];
         let iline = 100i32.to_be_bytes();
         let xline = 200i32.to_be_bytes();
         trace1_head[188..192].copy_from_slice(&iline);
         trace1_head[192..196].copy_from_slice(&xline);
-        
+
         let mut trace1_data = vec![0u8; sample_count as usize * 4];
         let val = 1.5f32.to_be_bytes();
         trace1_data[0..4].copy_from_slice(&val);
-        
+
         content.extend_from_slice(&trace1_head);
         content.extend_from_slice(&trace1_data);
-        
+
         tmp.write_all(&content).unwrap();
-        
+
         let segy = MmappedSegy::new(tmp.path()).unwrap();
         assert_eq!(segy.trace_count, 1);
         assert_eq!(segy.inline_range, (100, 100));
         assert_eq!(segy.crossline_range, (200, 200));
-        
+
         let trace = segy.get_trace(100, 200).unwrap();
         assert_eq!(trace[0], 1.5);
     }
