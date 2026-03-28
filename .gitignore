@@ -1,30 +1,178 @@
-# Rust
+# ============================================
+# RUST
+# ============================================
 /target/
 **/*.rs.bk
 *.pdb
+**/*.dll
+**/*.exe
+**/*.lib
+**/*.a
+**/*.so
+**/*.dylib
 
-# Database
+# Cargo
+Cargo.lock
+**/Cargo.lock
+
+# Build output
+**/target/
+**/debug/
+**/release/
+
+# Benchmarking
+criterion/
+
+# ============================================
+# DATABASE
+# ============================================
 *.sqlite
 *.sqlite3
+*.db
+data/*.sqlite
+data/*.db
 
-# Logs
+# ============================================
+# LOGS & TEMP FILES
+# ============================================
 *.log
+logs/
+temp/
+tmp/
+*.tmp
+*.temp
 
-# OS
+# ============================================
+# OS FILES
+# ============================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
-# Project files
+# ============================================
+# PROJECT SPECIFIC
+# ============================================
 *.sf/
+*.sfp
+data/blobstore/
+data/projects/
 
-# IDE
-.idea/
+# ============================================
+# IDE & EDITORS
+# ============================================
+# Visual Studio Code
 .vscode/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Vim
 *.swp
 *.swo
 *~
+*.un~
 
-# Test artifacts
+# Emacs
+*~
+\#*\#
+.*.auto-save-number
+
+# ============================================
+# TESTING & COVERAGE
+# ============================================
+# Profiling
 *.profraw
 *.profdata
+
+# Coverage reports
 coverage/
+*.gcda
+*.gcno
+tarpaulin-report.html
+cobertura.xml
+
+# Test output
+test-results/
+*.test
+
+# ============================================
+# DOCUMENTATION
+# ============================================
+# Generated docs
+target/doc/
+docs/generated/
+
+# ============================================
+# SECRETS & CREDENTIALS
+# ============================================
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Keys and certificates
+*.key
+*.pem
+*.crt
+*.cer
+*.pfx
+*.p12
+
+# AWS
+.aws/credentials
+*.aws-credentials
+
+# GitHub
+.github/token
+.github/secret
+.github/secrets
+
+# ============================================
+# CI/CD
+# ============================================
+# GitHub Actions cache
+.github/cache/
+
+# ============================================
+# MISC
+# ============================================
+# Qwen Code local state
+.qwen/
+
+# Temporary credentials
+gha-creds-*.json
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Compressed files (accidentally committed)
+*.zip
+*.tar.gz
+*.rar
+
+# ============================================
+# ALLOWED
+# ============================================
+# Keep these (not ignored)
+!README.md
+!Cargo.toml
+!.gitignore
+!LICENSE
