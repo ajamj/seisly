@@ -2,14 +2,36 @@ use eframe::egui;
 use uuid::Uuid;
 
 use crate::widgets::viewport::ViewportWidget;
-use crate::interpretation::{InterpretationState, Horizon, Fault, PickingMode, VelocityState};
+use crate::widgets::crossplot::CrossPlotWidget;
+use crate::interpretation::{InterpretationState, Horizon, Fault, PickingMode, VelocityState, HistoryManager};
 use sf_compute::seismic::{SeismicVolume, InMemoryProvider};
 use sf_storage::project::SeismicVolumeEntry;
+
+pub struct VisualSettings {
+    pub gain: f32,
+    pub clip: f32,
+    pub opacity: f32,
+    pub colormap: String,
+}
+
+impl Default for VisualSettings {
+    fn default() -> Self {
+        Self {
+            gain: 1.0,
+            clip: 1.0,
+            opacity: 0.5,
+            colormap: "Seismic".to_string(),
+        }
+    }
+}
 
 pub struct StrataForgeApp {
     name: String,
     viewport: ViewportWidget,
+    crossplot: CrossPlotWidget,
     interpretation: InterpretationState,
+    history: HistoryManager,
+    visuals: VisualSettings,
     volume: Option<SeismicVolume>,
     seismic_volumes: Vec<SeismicVolumeEntry>,
     velocity: VelocityState,
@@ -18,6 +40,7 @@ pub struct StrataForgeApp {
 
 impl StrataForgeApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
         let mut interpretation = InterpretationState::new();
 
         let target_format = cc.wgpu_render_state.as_ref().map(|rs| rs.target_format);
@@ -46,7 +69,6 @@ impl StrataForgeApp {
             for j in 0..501 {
                 let idx = (i * 501 + j) * sample_count + 250;
                 data[idx] = 1.0;
-                // Add some noise/taper
                 if idx > 0 { data[idx-1] = 0.5; }
                 if idx < data.len() - 1 { data[idx+1] = 0.5; }
             }
@@ -71,19 +93,15 @@ impl StrataForgeApp {
                 is_visible: true,
                 channel_assignment: 0,
             },
-            SeismicVolumeEntry {
-                id: Uuid::new_v4().to_string(),
-                name: "Near Stack".to_string(),
-                path: "seismic/near_stack.segy".to_string(),
-                is_visible: false,
-                channel_assignment: 0,
-            },
         ];
 
         Self {
             name: "MyField".to_owned(),
             viewport,
+            crossplot: CrossPlotWidget::new("Gamma Ray", "Depth"),
             interpretation,
+            history: HistoryManager::new(),
+            visuals: VisualSettings::default(),
             volume,
             seismic_volumes,
             velocity: VelocityState::new(),
@@ -138,6 +156,27 @@ impl StrataForgeApp {
             }
         }
     }
+
+    fn export_active_horizon(&self, format: &str) {
+        use sf_io::export::{SurfaceExporter, json::JsonExporter, xyz::XyzExporter};
+        
+        if let Some(horizon) = self.interpretation.active_horizon() {
+            if let Some(mesh) = horizon.meshes.first() {
+                let path = format!("{}.{}", horizon.name, format);
+                let result = match format {
+                    "xyz" => XyzExporter.export_surface(mesh, std::path::Path::new(&path)),
+                    "json" => JsonExporter.export_surface(mesh, std::path::Path::new(&path)),
+                    _ => Ok(()),
+                };
+
+                if let Err(e) = result {
+                    eprintln!("Export failed: {}", e);
+                } else {
+                    println!("Exported {} to {}", horizon.name, path);
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for StrataForgeApp {
@@ -146,15 +185,34 @@ impl eframe::App for StrataForgeApp {
             ui.horizontal(|ui| {
                 ui.heading("StrataForge");
                 ui.separator();
-                ui.label(format!("Project: {}", self.name));
+                
+                // Contextual Toolbar based on active selection
+                if self.interpretation.active_horizon_id.is_some() {
+                    ui.label("Horizon:");
+                    ui.add(egui::Image::new(egui::include_image!("../assets/icons/horizon.svg")).max_width(20.0));
+                    if ui.button("Undo").clicked() { self.history.undo(&mut self.interpretation); }
+                    if ui.button("Redo").clicked() { self.history.redo(&mut self.interpretation); }
+                } else if self.interpretation.active_fault_id.is_some() {
+                    ui.label("Fault:");
+                    ui.add(egui::Image::new(egui::include_image!("../assets/icons/fault.svg")).max_width(20.0));
+                    if ui.button("Undo").clicked() { self.history.undo(&mut self.interpretation); }
+                }
 
                 ui.separator();
                 ui.label("Picking:");
                 ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::None, "None");
-                ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Seed, "Seed");
-                ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::AutoTrack, "Auto-Track");
-                ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Manual, "Manual");
-                ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::SketchFault, "Sketch Fault");
+                
+                ui.horizontal(|ui| {
+                    let seed_resp = ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Seed, "Seed");
+                    if seed_resp.hovered() { ui.label("Auto-Seed"); }
+                    
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::AutoTrack, "Auto-Track");
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Manual, "Manual");
+                    
+                    ui.separator();
+                    ui.add(egui::Image::new(egui::include_image!("../assets/icons/seismic.svg")).max_width(20.0));
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::SketchFault, "Sketch Fault");
+                });
 
                 ui.separator();
                 ui.checkbox(&mut self.velocity.is_depth_mode, "Depth Mode");
@@ -258,11 +316,21 @@ impl eframe::App for StrataForgeApp {
         });
 
         egui::SidePanel::right("right_panel").show(ctx, |ui| {
-            ui.heading("AI Analysis");
+            ui.heading("Analysis & Visuals");
             ui.separator();
-            if ui.button("Run Fault Detection").clicked() {
-                println!("Fault detection requested");
-            }
+            
+            ui.collapsing("Visuals", |ui| {
+                ui.add(egui::Slider::new(&mut self.visuals.gain, 0.1..=10.0).text("Gain"));
+                ui.add(egui::Slider::new(&mut self.visuals.clip, 0.0..=1.0).text("Clip"));
+                ui.add(egui::Slider::new(&mut self.visuals.opacity, 0.0..=1.0).text("Opacity"));
+                egui::ComboBox::from_label("Colormap")
+                    .selected_text(&self.visuals.colormap)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut self.visuals.colormap, "Seismic".to_string(), "Seismic");
+                        ui.selectable_value(&mut self.visuals.colormap, "Viridis".to_string(), "Viridis");
+                        ui.selectable_value(&mut self.visuals.colormap, "Magma".to_string(), "Magma");
+                    });
+            });
 
             ui.separator();
             ui.heading("Volumetrics");
@@ -277,6 +345,10 @@ impl eframe::App for StrataForgeApp {
             if let Some(vol) = self.volumetric_result {
                 ui.label(format!("Last Volume: {:.2} m³", vol));
             }
+
+            ui.separator();
+            ui.heading("Log Analysis");
+            self.crossplot.ui(ui, &[[10.0, 500.0], [20.0, 600.0], [15.0, 550.0]]);
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {

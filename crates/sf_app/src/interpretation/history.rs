@@ -1,18 +1,23 @@
+use super::{InterpretationState, Pick, Horizon, Fault, FaultStick};
 use uuid::Uuid;
-use super::{InterpretationState, Pick};
 
-pub trait InterpretationCommand: std::fmt::Debug {
+pub trait InterpretationCommand {
     fn execute(&mut self, state: &mut InterpretationState);
     fn undo(&mut self, state: &mut InterpretationState);
 }
 
-#[derive(Debug)]
-pub struct AddPick {
-    pub horizon_id: Uuid,
-    pub pick: Pick,
+pub struct AddPickCommand {
+    horizon_id: Uuid,
+    pick: Pick,
 }
 
-impl InterpretationCommand for AddPick {
+impl AddPickCommand {
+    pub fn new(horizon_id: Uuid, pick: Pick) -> Self {
+        Self { horizon_id, pick }
+    }
+}
+
+impl InterpretationCommand for AddPickCommand {
     fn execute(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
             horizon.add_pick(self.pick.clone());
@@ -28,43 +33,50 @@ impl InterpretationCommand for AddPick {
     }
 }
 
-#[derive(Debug)]
-pub struct DeletePick {
-    pub horizon_id: Uuid,
-    pub pick_id: Uuid,
-    pub deleted_pick: Option<Pick>,
+pub struct DeletePickCommand {
+    horizon_id: Uuid,
+    pick: Pick,
+    index: usize,
 }
 
-impl InterpretationCommand for DeletePick {
+impl DeletePickCommand {
+    pub fn new(horizon_id: Uuid, pick: Pick, index: usize) -> Self {
+        Self { horizon_id, pick, index }
+    }
+}
+
+impl InterpretationCommand for DeletePickCommand {
     fn execute(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
-            if let Some(index) = horizon.picks.iter().position(|p| p.id == self.pick_id) {
-                self.deleted_pick = Some(horizon.picks.remove(index));
-                horizon.update_mesh();
-            }
+            horizon.picks.remove(self.index);
+            horizon.update_mesh();
         }
     }
 
     fn undo(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
-            if let Some(pick) = self.deleted_pick.take() {
-                horizon.add_pick(pick);
-                horizon.update_mesh();
-            }
+            self.horizon_id = self.horizon_id; // satisfy compiler if needed
+            horizon.picks.insert(self.index, self.pick.clone());
+            horizon.update_mesh();
         }
     }
 }
 
-#[derive(Debug)]
-pub struct AutoTrack {
-    pub horizon_id: Uuid,
-    pub new_picks: Vec<Pick>,
+pub struct AutoTrackCommand {
+    horizon_id: Uuid,
+    picks: Vec<Pick>,
 }
 
-impl InterpretationCommand for AutoTrack {
+impl AutoTrackCommand {
+    pub fn new(horizon_id: Uuid, picks: Vec<Pick>) -> Self {
+        Self { horizon_id, picks }
+    }
+}
+
+impl InterpretationCommand for AutoTrackCommand {
     fn execute(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
-            for pick in &self.new_picks {
+            for pick in &self.picks {
                 horizon.add_pick(pick.clone());
             }
             horizon.update_mesh();
@@ -73,19 +85,25 @@ impl InterpretationCommand for AutoTrack {
 
     fn undo(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
-            let ids: std::collections::HashSet<Uuid> = self.new_picks.iter().map(|p| p.id).collect();
-            horizon.picks.retain(|p| !ids.contains(&p.id));
+            let pick_ids: std::collections::HashSet<_> = self.picks.iter().map(|p| p.id).collect();
+            horizon.picks.retain(|p| !pick_ids.contains(&p.id));
             horizon.update_mesh();
         }
     }
 }
 
-#[derive(Debug)]
-pub struct GenerateSurface {
-    pub horizon_id: Uuid,
+pub struct GenerateSurfaceCommand {
+    horizon_id: Uuid,
+    // Note: In a real app, we might store the previous surface state
 }
 
-impl InterpretationCommand for GenerateSurface {
+impl GenerateSurfaceCommand {
+    pub fn new(horizon_id: Uuid) -> Self {
+        Self { horizon_id }
+    }
+}
+
+impl InterpretationCommand for GenerateSurfaceCommand {
     fn execute(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
             horizon.update_mesh();
@@ -93,8 +111,34 @@ impl InterpretationCommand for GenerateSurface {
     }
 
     fn undo(&mut self, _state: &mut InterpretationState) {
-        // RBF is deterministic, so undoing just leaves the mesh as it was.
-        // In a real system we might want to store the previous mesh state.
+        // Reverting a surface generation might just clear the mesh or do nothing if mesh is always derived from picks
+    }
+}
+
+pub struct AddFaultStickCommand {
+    fault_id: Uuid,
+    stick: FaultStick,
+}
+
+impl AddFaultStickCommand {
+    pub fn new(fault_id: Uuid, stick: FaultStick) -> Self {
+        Self { fault_id, stick }
+    }
+}
+
+impl InterpretationCommand for AddFaultStickCommand {
+    fn execute(&mut self, state: &mut InterpretationState) {
+        if let Some(fault) = state.faults.iter_mut().find(|f| f.id == self.fault_id) {
+            fault.add_stick(self.stick.clone());
+            fault.update_mesh();
+        }
+    }
+
+    fn undo(&mut self, state: &mut InterpretationState) {
+        if let Some(fault) = state.faults.iter_mut().find(|f| f.id == self.fault_id) {
+            fault.sticks.retain(|s| s.id != self.stick.id);
+            fault.update_mesh();
+        }
     }
 }
 
@@ -129,13 +173,5 @@ impl HistoryManager {
             command.execute(state);
             self.undo_stack.push(command);
         }
-    }
-
-    pub fn can_undo(&self) -> bool {
-        !self.undo_stack.is_empty()
-    }
-
-    pub fn can_redo(&self) -> bool {
-        !self.redo_stack.is_empty()
     }
 }
