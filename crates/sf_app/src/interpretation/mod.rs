@@ -3,8 +3,10 @@ use uuid::Uuid;
 use sf_core::domain::surface::Mesh;
 
 pub mod velocity;
+pub mod history;
 
 pub use velocity::VelocityState;
+pub use history::{HistoryManager, InterpretationCommand};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum PickSource {
