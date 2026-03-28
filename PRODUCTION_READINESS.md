@@ -37,8 +37,9 @@
 
 ## 🚧 In Progress
 
-### **Well Integration** (Task 1/10 complete)
-- [x] LAS 2.0 parser implementation
+### **Well Integration** (Task 2/10 complete)
+- [x] LAS 2.0 parser implementation ✅
+- [x] LAS 2.0 writer implementation ✅ (NEW!)
 - [ ] LAS 3.0 parser
 - [ ] Well trajectory model
 - [ ] Well manager UI
@@ -47,10 +48,10 @@
 - [ ] Synthetic seismogram
 
 ### **Production Features**
-- [x] Quick Start Guide
+- [x] Quick Start Guide ✅
+- [x] LAS I/O complete (import/export) ✅ (NEW!)
 - [ ] Project save/load UI
 - [ ] SEG-Y import
-- [ ] LAS export
 - [ ] Error dialogs
 - [ ] Progress indicators
 
