@@ -2,36 +2,30 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "master", "develop" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  release:
-    types: [created]
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.70.0
 
 jobs:
   # ============================================
-  # BUILD JOB
+  # BUILD & TEST JOB
   # ============================================
-  build:
+  build-and-test:
     name: Build & Test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        rust: [1.70.0, stable]
-        exclude:
-          - os: macos-latest
-            rust: 1.70.0  # Skip older Rust on macOS to save CI time
-    
+        os: [windows-latest, ubuntu-latest]
+        rust: [stable]
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Rust
+    - name: Setup Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
@@ -44,12 +38,11 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-${{ matrix.rust }}-
           ${{ runner.os }}-cargo-
 
-    - name: Install dependencies (Linux)
+    - name: Install dependencies (Linux only)
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
@@ -62,15 +55,10 @@ jobs:
           pkg-config \
           libgtk-3-dev
 
-    - name: Install dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install openssl pkg-config
-
     - name: Check formatting
       run: cargo fmt --all -- --check
 
-    - name: Run Clippy (warnings only)
+    - name: Run Clippy
       run: cargo clippy --workspace --all-targets -- -W clippy::all
 
     - name: Build workspace
@@ -85,7 +73,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: strataforge-${{ runner.os }}-${{ matrix.rust }}
+        name: strataforge-${{ runner.os }}
         path: target/release/sf-app*
         if-no-files-found: ignore
 
@@ -95,13 +83,13 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    needs: build
-    
+    needs: build-and-test
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Rust with coverage tools
+    - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
@@ -113,140 +101,9 @@ jobs:
     - name: Run coverage
       run: cargo tarpaulin --workspace --out Xml --output-dir coverage
 
-    - name: Upload coverage to Codecov
+    - name: Upload to Codecov
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage/cobertura.xml
         flags: unittests
-        name: codecov-umbrella
         fail_ci_if_error: false
-
-  # ============================================
-  # RELEASE JOB
-  # ============================================
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: [build, coverage]
-    if: github.event_name == 'release'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          libxcb-render0-dev \
-          libxcb-shape0-dev \
-          libxcb-xfixes0-dev \
-          libxkbcommon-dev \
-          libssl-dev \
-          pkg-config \
-          libgtk-3-dev
-
-    - name: Build release binaries
-      run: |
-        cargo build --release --workspace
-        
-        # Create release directory
-        mkdir -p release
-        
-        # Copy binaries
-        cp target/release/sf-app release/
-        cp target/release/sf-cli release/ 2>/dev/null || true
-        
-        # Copy documentation
-        cp README.md release/
-        cp QUICKSTART.md release/
-        cp LICENSE release/ 2>/dev/null || true
-        
-        # Create archive
-        cd release
-        tar -czvf strataforge-${{ github.ref_name }}-linux-x86_64.tar.gz *
-
-    - name: Upload release assets
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./release/strataforge-${{ github.ref_name }}-linux-x86_64.tar.gz
-        asset_name: strataforge-${{ github.ref_name }}-linux-x86_64.tar.gz
-        asset_content_type: application/gzip
-
-  # ============================================
-  # PUBLISH JOB (crates.io)
-  # ============================================
-  publish:
-    name: Publish to crates.io
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.event_name == 'release'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-
-    - name: Publish sf_core
-      run: cargo publish -p sf_core --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      continue-on-error: true
-
-    - name: Publish sf_io
-      run: cargo publish -p sf_io --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      continue-on-error: true
-
-    - name: Publish sf_compute
-      run: cargo publish -p sf_compute --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      continue-on-error: true
-
-    - name: Publish sf_storage
-      run: cargo publish -p sf_storage --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      continue-on-error: true
-
-    - name: Publish sf_render
-      run: cargo publish -p sf_render --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      continue-on-error: true
-
-    - name: Publish sf_app
-      run: cargo publish -p sf_app --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      continue-on-error: true
-
-  # ============================================
-  # DEPLOY DOCS JOB
-  # ============================================
-  deploy-docs:
-    name: Deploy Documentation
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/master'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-
-    - name: Build documentation
-      run: cargo doc --workspace --no-deps --document-private-items
-
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./target/doc
-        destination_dir: docs
