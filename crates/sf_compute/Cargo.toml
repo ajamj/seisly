@@ -9,6 +9,7 @@ sf_io.workspace = true
 spade.workspace = true
 thiserror.workspace = true
 nalgebra.workspace = true
+rand = "0.8"
 
 [dev-dependencies]
 uuid.workspace = true

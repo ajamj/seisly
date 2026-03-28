@@ -6,6 +6,7 @@ pub mod csv;
 pub mod las;
 pub mod segy;
 pub mod xyz;
+pub mod export;
 
 pub use csv::trajectory::TrajectoryParser;
 pub use las::parser::LasParser;

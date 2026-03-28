@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 sf_core.workspace = true
+sf_compute = { path = "../sf_compute" }
 wgpu.workspace = true
 nalgebra.workspace = true
 bytemuck = "1.14"

@@ -6,6 +6,7 @@ use crate::Scene;
 /// Main renderer for 3D scenes
 pub struct Renderer {
     pipeline: RenderPipeline,
+    #[allow(dead_code)] // Reserved for RGB blending feature
     rgb_pipeline: RenderPipeline,
     pub rgb_bind_group_layout: wgpu::BindGroupLayout,
     

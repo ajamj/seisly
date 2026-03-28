@@ -3,7 +3,12 @@ use uuid::Uuid;
 
 use crate::widgets::viewport::ViewportWidget;
 use crate::widgets::crossplot::CrossPlotWidget;
-use crate::interpretation::{InterpretationState, Horizon, Fault, PickingMode, VelocityState, HistoryManager};
+use crate::widgets::fault_properties_panel::FaultPropertiesPanel;
+use crate::widgets::horizon_properties_panel::HorizonPropertiesPanel;
+use crate::widgets::velocity_panel::VelocityPanel;
+use crate::widgets::well_panel::WellPanel;
+use crate::interpretation::{InterpretationState, Horizon, Fault, PickingMode, VelocityState, HistoryManager, WellState};
+use crate::ui_styles::{self, UiTheme, ThemeManager};
 use sf_compute::seismic::{SeismicVolume, InMemoryProvider};
 use sf_storage::project::SeismicVolumeEntry;
 
@@ -26,9 +31,14 @@ impl Default for VisualSettings {
 }
 
 pub struct StrataForgeApp {
+    #[allow(dead_code)]
     name: String,
     viewport: ViewportWidget,
     crossplot: CrossPlotWidget,
+    fault_properties: FaultPropertiesPanel,
+    horizon_properties: HorizonPropertiesPanel,
+    velocity_panel: VelocityPanel,
+    well_panel: WellPanel,
     interpretation: InterpretationState,
     history: HistoryManager,
     visuals: VisualSettings,
@@ -36,24 +46,30 @@ pub struct StrataForgeApp {
     seismic_volumes: Vec<SeismicVolumeEntry>,
     velocity: VelocityState,
     volumetric_result: Option<f32>,
+    wells: WellState,
+    theme_manager: ThemeManager,
 }
 
 impl StrataForgeApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        let theme_manager = ThemeManager::new();
+        // Apply theme
+        ui_styles::apply_theme(&cc.egui_ctx, theme_manager.current_theme);
+        
         egui_extras::install_image_loaders(&cc.egui_ctx);
         let mut interpretation = InterpretationState::new();
 
         let target_format = cc.wgpu_render_state.as_ref().map(|rs| rs.target_format);
         // Add a default horizon for demo
         let h_id = Uuid::new_v4();
-        let mut horizon = Horizon::new("Horizon A".to_string(), [0.0, 1.0, 0.0]);
+        let mut horizon = Horizon::new("Horizon A".to_string(), [0.0, 1.0, 0.0, 0.7]);
         horizon.id = h_id;
         interpretation.add_horizon(horizon);
         interpretation.active_horizon_id = Some(h_id);
 
         // Add a default fault for demo
         let f_id = Uuid::new_v4();
-        let mut fault = Fault::new("Fault A".to_string(), [1.0, 0.0, 0.0]);
+        let mut fault = Fault::new("Fault A".to_string(), [1.0, 0.0, 0.0, 0.5]);
         fault.id = f_id;
         interpretation.add_fault(fault);
         interpretation.active_fault_id = Some(f_id);
@@ -99,6 +115,11 @@ impl StrataForgeApp {
             name: "MyField".to_owned(),
             viewport,
             crossplot: CrossPlotWidget::new("Gamma Ray", "Depth"),
+            fault_properties: FaultPropertiesPanel::new(),
+            horizon_properties: HorizonPropertiesPanel::new(),
+            velocity_panel: VelocityPanel::new(),
+            well_panel: WellPanel::new(),
+            wells: WellState::new(),
             interpretation,
             history: HistoryManager::new(),
             visuals: VisualSettings::default(),
@@ -106,6 +127,7 @@ impl StrataForgeApp {
             seismic_volumes,
             velocity: VelocityState::new(),
             volumetric_result: None,
+            theme_manager,
         }
     }
 
@@ -157,23 +179,58 @@ impl StrataForgeApp {
         }
     }
 
+    #[allow(dead_code)] // Export feature - used via UI buttons
     fn export_active_horizon(&self, format: &str) {
-        use sf_io::export::{SurfaceExporter, json::JsonExporter, xyz::XyzExporter};
-        
-        if let Some(horizon) = self.interpretation.active_horizon() {
-            if let Some(mesh) = horizon.meshes.first() {
-                let path = format!("{}.{}", horizon.name, format);
-                let result = match format {
-                    "xyz" => XyzExporter.export_surface(mesh, std::path::Path::new(&path)),
-                    "json" => JsonExporter.export_surface(mesh, std::path::Path::new(&path)),
-                    _ => Ok(()),
-                };
+        use sf_io::export::{SurfaceExporter, xyz::XyzExporter};
+        use std::io::Write;
+        use std::fs::File;
 
-                if let Err(e) = result {
-                    eprintln!("Export failed: {}", e);
-                } else {
-                    println!("Exported {} to {}", horizon.name, path);
-                }
+        if let Some(horizon) = self.interpretation.active_horizon() {
+            // Export picks as XYZ or JSON
+            let result = match format {
+                "xyz" => {
+                    let filename = format!("{}_picks.xyz", horizon.name.replace(" ", "_"));
+                    let mut file = File::create(&filename);
+                    if let Ok(ref mut f) = file {
+                        for pick in &horizon.picks {
+                            let _ = writeln!(f, "{:.2} {:.2} {:.2}", pick.position[0], pick.position[1], pick.position[2]);
+                        }
+                        Ok(())
+                    } else {
+                        Err(anyhow::anyhow!("Failed to create file: {}", filename))
+                    }
+                },
+                "json" => {
+                    let filename = format!("{}_picks.json", horizon.name.replace(" ", "_"));
+                    // Simple JSON export without serde_json dependency
+                    let mut file = File::create(&filename);
+                    if let Ok(ref mut f) = file {
+                        let _ = writeln!(f, "[");
+                        for (i, pick) in horizon.picks.iter().enumerate() {
+                            let comma = if i < horizon.picks.len() - 1 { "," } else { "" };
+                            let _ = writeln!(f, "  {{\"id\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}]}}{}", pick.id, pick.position[0], pick.position[1], pick.position[2], comma);
+                        }
+                        let _ = writeln!(f, "]");
+                        Ok(())
+                    } else {
+                        Err(anyhow::anyhow!("Failed to create file: {}", filename))
+                    }
+                },
+                "mesh_xyz" => {
+                    if let Some(mesh) = horizon.meshes.first() {
+                        XyzExporter.export_surface(mesh, std::path::Path::new(&format!("{}_mesh.xyz", horizon.name.replace(" ", "_"))))
+                            .map_err(|e| anyhow::anyhow!("Mesh export failed: {}", e))
+                    } else {
+                        Err(anyhow::anyhow!("No mesh to export"))
+                    }
+                },
+                _ => Ok(()),
+            };
+
+            if let Err(e) = result {
+                eprintln!("Export failed: {}", e);
+            } else {
+                println!("Exported {} picks to {}", horizon.name, format);
             }
         }
     }
@@ -181,48 +238,80 @@ impl StrataForgeApp {
 
 impl eframe::App for StrataForgeApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        // Top Ribbon - Modern toolbar
+        egui::TopBottomPanel::top("top_ribbon").show(ctx, |ui| {
+            ui.add_space(4.0);
+            
+            // First row - App title and menu
             ui.horizontal(|ui| {
-                ui.heading("StrataForge");
+                ui.heading("🛢 StrataForge");
                 ui.separator();
                 
-                // Contextual Toolbar based on active selection
+                // Quick access toolbar
+                if ui.button("💾").clicked() { /* Save */ }
+                if ui.button("↶").clicked() { self.history.undo(&mut self.interpretation); }
+                if ui.button("↷").clicked() { self.history.redo(&mut self.interpretation); }
+                
+                ui.separator();
+                
+                // Context-aware tools
                 if self.interpretation.active_horizon_id.is_some() {
-                    ui.label("Horizon:");
-                    ui.add(egui::Image::new(egui::include_image!("../assets/icons/horizon.svg")).max_width(20.0));
-                    if ui.button("Undo").clicked() { self.history.undo(&mut self.interpretation); }
-                    if ui.button("Redo").clicked() { self.history.redo(&mut self.interpretation); }
+                    ui.label("🌈 Horizon");
                 } else if self.interpretation.active_fault_id.is_some() {
-                    ui.label("Fault:");
-                    ui.add(egui::Image::new(egui::include_image!("../assets/icons/fault.svg")).max_width(20.0));
-                    if ui.button("Undo").clicked() { self.history.undo(&mut self.interpretation); }
+                    ui.label("⚡ Fault");
+                } else {
+                    ui.label("📊 Seismic");
                 }
-
-                ui.separator();
-                ui.label("Picking:");
-                ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::None, "None");
                 
-                ui.horizontal(|ui| {
-                    let seed_resp = ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Seed, "Seed");
-                    if seed_resp.hovered() { ui.label("Auto-Seed"); }
-                    
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::AutoTrack, "Auto-Track");
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Manual, "Manual");
-                    
-                    ui.separator();
-                    ui.add(egui::Image::new(egui::include_image!("../assets/icons/seismic.svg")).max_width(20.0));
-                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::SketchFault, "Sketch Fault");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui.button("❓").clicked() { /* Help */ }
                 });
-
-                ui.separator();
-                ui.checkbox(&mut self.velocity.is_depth_mode, "Depth Mode");
-                if self.velocity.is_depth_mode {
-                    ui.label("V0:");
-                    ui.add(egui::DragValue::new(&mut self.velocity.model.v0).speed(10.0));
-                    ui.label("k:");
-                    ui.add(egui::DragValue::new(&mut self.velocity.model.k).speed(0.01));
-                }
             });
+            
+            ui.add_space(4.0);
+            ui.separator();
+            ui.add_space(4.0);
+            
+            // Second row - Tools
+            ui.horizontal(|ui| {
+                // File operations
+                ui.group(|ui| {
+                    ui.horizontal(|ui| {
+                        if ui.button("📂 New").clicked() { /* New project */ }
+                        if ui.button("📁 Open").clicked() { /* Open */ }
+                        if ui.button("💾 Save").clicked() { /* Save */ }
+                    });
+                });
+                
+                ui.separator();
+                
+                // Interpretation tools
+                ui.group(|ui| {
+                    ui.label("Picking:");
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::None, "⊘");
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Seed, "🌱");
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::Manual, "✏️");
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::AutoTrack, "🔄");
+                    ui.selectable_value(&mut self.interpretation.picking_mode, PickingMode::SketchFault, "⚡");
+                });
+                
+                ui.separator();
+                
+                // View controls
+                ui.group(|ui| {
+                    ui.checkbox(&mut self.velocity.is_depth_mode, "📏 Depth");
+                    if self.velocity.is_depth_mode {
+                        ui.horizontal(|ui| {
+                            ui.label("V0:");
+                            ui.add(egui::DragValue::new(&mut self.velocity.model.v0).speed(100.0).prefix("m/s"));
+                            ui.label("k:");
+                            ui.add(egui::DragValue::new(&mut self.velocity.model.k).speed(0.01).prefix("1/s"));
+                        });
+                    }
+                });
+            });
+            
+            ui.add_space(4.0);
         });
 
         egui::SidePanel::left("left_panel").show(ctx, |ui| {
@@ -247,7 +336,7 @@ impl eframe::App for StrataForgeApp {
             ui.collapsing("Horizons", |ui| {
                 if ui.button("Add Horizon").clicked() {
                     let name = format!("Horizon {}", self.interpretation.horizons.len() + 1);
-                    self.interpretation.add_horizon(Horizon::new(name, [1.0, 1.0, 0.0]));
+                    self.interpretation.add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
                 }
                 ui.separator();
                 
@@ -280,7 +369,7 @@ impl eframe::App for StrataForgeApp {
             ui.collapsing("Faults", |ui| {
                 if ui.button("Add Fault").clicked() {
                     let name = format!("Fault {}", self.interpretation.faults.len() + 1);
-                    self.interpretation.add_fault(Fault::new(name, [1.0, 0.0, 0.0]));
+                    self.interpretation.add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
                 }
                 ui.separator();
 
@@ -309,50 +398,263 @@ impl eframe::App for StrataForgeApp {
                     });
                 }
             });
-            
-            ui.collapsing("Wells", |ui| {
-                ui.label("Well-1");
-            });
+
+            // Wells section - integrated with WellPanel
+            self.well_panel.ui(ui, &mut self.wells);
         });
 
-        egui::SidePanel::right("right_panel").show(ctx, |ui| {
-            ui.heading("Analysis & Visuals");
-            ui.separator();
-            
-            ui.collapsing("Visuals", |ui| {
-                ui.add(egui::Slider::new(&mut self.visuals.gain, 0.1..=10.0).text("Gain"));
-                ui.add(egui::Slider::new(&mut self.visuals.clip, 0.0..=1.0).text("Clip"));
-                ui.add(egui::Slider::new(&mut self.visuals.opacity, 0.0..=1.0).text("Opacity"));
-                egui::ComboBox::from_label("Colormap")
-                    .selected_text(&self.visuals.colormap)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.visuals.colormap, "Seismic".to_string(), "Seismic");
-                        ui.selectable_value(&mut self.visuals.colormap, "Viridis".to_string(), "Viridis");
-                        ui.selectable_value(&mut self.visuals.colormap, "Magma".to_string(), "Magma");
+        // Right Panel - Properties & Analysis
+        egui::SidePanel::right("right_panel")
+            .min_width(250.0)
+            .max_width(400.0)
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.add_space(8.0);
+                ui.heading("📊 Properties");
+                ui.add_space(8.0);
+                ui.separator();
+                ui.add_space(8.0);
+
+                // Context-aware properties
+                if let Some(horizon) = self.interpretation.active_horizon() {
+                    ui.collapsing("🌈 Horizon Properties", |ui| {
+                        ui.label(format!("Name: {}", horizon.name));
+                        ui.horizontal(|ui| {
+                            ui.label("Color:");
+                            let color = egui::Color32::from_rgba_unmultiplied(
+                                (horizon.color[0] * 255.0) as u8,
+                                (horizon.color[1] * 255.0) as u8,
+                                (horizon.color[2] * 255.0) as u8,
+                                255,
+                            );
+                            let color_rect = ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
+                            ui.painter().rect_filled(color_rect.rect, 4.0, color);
+                        });
+                        ui.label(format!("Picks: {}", horizon.picks.len()));
+                        ui.label(format!("Visible: {}", if horizon.is_visible { "Yes" } else { "No" }));
+                        
+                        ui.separator();
+                        ui.horizontal(|ui| {
+                            if ui.button("📤 Export XYZ").clicked() {
+                                self.export_active_horizon("xyz");
+                            }
+                            if ui.button("📤 JSON").clicked() {
+                                self.export_active_horizon("json");
+                            }
+                        });
                     });
-            });
-
-            ui.separator();
-            ui.heading("Volumetrics");
-            if self.interpretation.selected_horizon_ids.len() >= 2 {
-                if ui.button("Calculate Volume").clicked() {
-                    self.calculate_volumetrics();
+                } else if let Some(fault) = self.interpretation.active_fault() {
+                    ui.collapsing("⚡ Fault Properties", |ui| {
+                        ui.label(format!("Name: {}", fault.name));
+                        ui.horizontal(|ui| {
+                            ui.label("Color:");
+                            let color = egui::Color32::from_rgba_unmultiplied(
+                                (fault.color[0] * 255.0) as u8,
+                                (fault.color[1] * 255.0) as u8,
+                                (fault.color[2] * 255.0) as u8,
+                                255,
+                            );
+                            let color_rect = ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
+                            ui.painter().rect_filled(color_rect.rect, 4.0, color);
+                        });
+                        ui.label(format!("Sticks: {}", fault.sticks.len()));
+                        ui.label(format!("Visible: {}", if fault.is_visible { "Yes" } else { "No" }));
+                    });
+                } else {
+                    ui.label("Select a horizon or fault to view properties");
                 }
-            } else {
-                ui.label("Select 2 horizons to calculate volume");
-            }
 
-            if let Some(vol) = self.volumetric_result {
-                ui.label(format!("Last Volume: {:.2} m³", vol));
-            }
+                ui.add_space(16.0);
+                ui.separator();
+                ui.add_space(8.0);
 
-            ui.separator();
-            ui.heading("Log Analysis");
-            self.crossplot.ui(ui, &[[10.0, 500.0], [20.0, 600.0], [15.0, 550.0]]);
-        });
+                // Velocity Model
+                ui.collapsing("📏 Velocity Model", |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Mode:");
+                        ui.checkbox(&mut self.velocity.is_depth_mode, "Depth");
+                    });
+                    if self.velocity.is_depth_mode {
+                        ui.add_space(8.0);
+                        ui.horizontal(|ui| {
+                            ui.label("V0:");
+                            ui.add(egui::DragValue::new(&mut self.velocity.model.v0)
+                                .speed(100.0)
+                                .prefix("m/s"));
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("k:");
+                            ui.add(egui::DragValue::new(&mut self.velocity.model.k)
+                                .speed(0.01)
+                                .prefix("1/s"));
+                        });
+                        
+                        ui.add_space(8.0);
+                        ui.separator();
+                        ui.label("Velocity Preview:");
+                        
+                        egui::Grid::new("velocity_preview")
+                            .num_columns(2)
+                            .spacing([40.0, 4.0])
+                            .striped(true)
+                            .show(ui, |ui| {
+                                ui.label("Depth (m)");
+                                ui.label("Velocity (m/s)");
+                                ui.end_row();
+
+                                let depths = [0.0, 500.0, 1000.0, 2000.0];
+                                for depth in depths {
+                                    let velocity = self.velocity.model.v0 + self.velocity.model.k * depth;
+                                    ui.label(format!("{:.0}", depth));
+                                    ui.label(format!("{:.0}", velocity));
+                                    ui.end_row();
+                                }
+                            });
+                    }
+                });
+
+                ui.add_space(16.0);
+                ui.separator();
+                ui.add_space(8.0);
+
+                // Visual Settings
+                ui.collapsing("🎨 Visual Settings", |ui| {
+                    ui.add(egui::Slider::new(&mut self.visuals.gain, 0.1..=10.0).text("Gain"));
+                    ui.add(egui::Slider::new(&mut self.visuals.clip, 0.0..=1.0).text("Clip"));
+                    ui.add(egui::Slider::new(&mut self.visuals.opacity, 0.0..=1.0).text("Opacity"));
+                    
+                    ui.separator();
+                    ui.label("Colormap:");
+                    egui::ComboBox::from_label("")
+                        .selected_text(&self.visuals.colormap)
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.visuals.colormap, "Seismic".to_string(), "🌈 Seismic");
+                            ui.selectable_value(&mut self.visuals.colormap, "Viridis".to_string(), "🟢 Viridis");
+                            ui.selectable_value(&mut self.visuals.colormap, "Magma".to_string(), "🔴 Magma");
+                        });
+                });
+
+                ui.add_space(16.0);
+                ui.separator();
+                ui.add_space(8.0);
+
+                // Volumetrics
+                ui.collapsing("📐 Volumetrics", |ui| {
+                    if self.interpretation.selected_horizon_ids.len() >= 2 {
+                        if ui.button("Calculate Volume").clicked() {
+                            self.calculate_volumetrics();
+                        }
+                        if let Some(vol) = self.volumetric_result {
+                            ui.label(format!("Volume: {:.2} m³", vol));
+                        }
+                    } else {
+                        ui.label("Select 2 horizons");
+                    }
+                });
+
+                ui.add_space(16.0);
+                ui.separator();
+                ui.add_space(8.0);
+
+                // Wells (quick access)
+                ui.collapsing("🛢 Wells", |ui| {
+                    for well in &self.wells.wells {
+                        ui.horizontal(|ui| {
+                            ui.checkbox(&mut well.is_visible.clone(), "");
+                            ui.label(&well.name);
+                        });
+                    }
+                    if ui.button("+ Add Well").clicked() {
+                        // Demo well creation
+                        use sf_core::domain::well::Well;
+                        let mut well = Well::new(
+                            "New Well".to_string(),
+                            "NW-1".to_string(),
+                            300000.0,
+                            600000.0,
+                            75.0,
+                        );
+                        well.add_top("Top Sand".to_string(), 1200.0, "TOP".to_string(), [1.0, 0.8, 0.0, 1.0]);
+                        self.wells.add_well(well);
+                    }
+                });
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             self.viewport.ui(ui, &mut self.interpretation, &self.velocity, self.volume.as_ref());
+        });
+
+        // Bottom Panel - Well Logs (collapsible)
+        egui::TopBottomPanel::bottom("bottom_panel")
+            .min_height(100.0)
+            .max_height(300.0)
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.heading("📊 Well Logs & Crossplots");
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("▼").clicked() {
+                            // Could toggle collapse here
+                        }
+                    });
+                });
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(8.0);
+
+                if !self.wells.wells.is_empty() {
+                    ui.horizontal(|ui| {
+                        ui.label("Well:");
+                        // Well selector dropdown could go here
+                        for well in &self.wells.wells {
+                            if ui.selectable_label(false, &well.name).clicked() {
+                                // Select well
+                            }
+                        }
+                        
+                        ui.separator();
+                        ui.label("Log:");
+                        ui.selectable_label(true, "GR");
+                        ui.selectable_label(false, "DT");
+                        ui.selectable_label(false, "RHOB");
+                    });
+                    
+                    ui.add_space(8.0);
+                    
+                    // Placeholder for log plot
+                    ui.label("📈 Log plot area - to be implemented");
+                    ui.label("Select a well and log to display");
+                } else {
+                    ui.label("No wells loaded. Click '+ Add Well' in the left panel.");
+                }
+            });
+
+        // Status Bar
+        egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                // Coordinates
+                ui.label("📍 Position:");
+                ui.monospace("X: 250.5  Y: 312.8  Z: 1523m");
+                
+                ui.separator();
+                
+                // TWT
+                ui.label("⏱ TWT:");
+                ui.monospace("1.250s");
+                
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Auto-tracking progress
+                    if let Some(progress) = self.viewport.tracking_progress {
+                        ui.label("🔄 Auto-Tracking:");
+                        ui.add(egui::ProgressBar::new(progress)
+                            .show_percentage()
+                            .desired_width(100.0));
+                    } else {
+                        ui.label("✅ Ready");
+                    }
+                });
+            });
         });
     }
 }

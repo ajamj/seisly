@@ -1,47 +1,64 @@
 ---
 phase: v04-phase-b-structural-logic
 plan: 2026-03-28-v04-phase-b-structural-logic.md
-subsystem: sf_compute
-tags: [RBF, 3D, PCA, Fault Modeling]
+subsystem: sf_app
+tags: [RBF, 3D, Fault Modeling, Interactive Picking, Sketch Mode]
 dependency_graph:
-  requires: [sf_core, nalgebra]
-  provides: [3D RBF Interpolation]
-  affects: [sf_compute]
+  requires: [sf_compute, sf_render, egui]
+  provides: [Interactive Fault Picking]
+  affects: [sf_app]
 tech_stack:
   added: []
-  patterns: [PCA-based Local Coordinates for RBF]
+  patterns: [Click-and-Drag Sketching for Fault Sticks]
 key_files:
   - crates/sf_compute/src/interpolation.rs
+  - crates/sf_app/src/interpretation/mod.rs
+  - crates/sf_app/src/widgets/viewport.rs
+  - crates/sf_app/src/app.rs
 decisions:
   - Used PCA (SVD) to find the best-fitting plane of 3D point clouds.
   - Performed RBF interpolation in the local (u, v, n) coordinate system to support vertical and high-angle planes.
-  - Added `generate_mesh_3d` to create meshes in the local plane, avoiding 2.5D limitations.
-  - Implemented an iterative solver in `evaluate(x, y)` to find $z$ for near-horizontal planes.
+  - Implemented `SketchFault` mode using `egui` drag events to allow free-form fault stick drawing.
+  - Automated RBF surface updates upon completing a fault stick sketch.
 metrics:
-  duration: 20m
+  duration: 45m
   completed_date: "2026-03-28"
   tasks_total: 3
-  tasks_completed: 1
+  tasks_completed: 2
 ---
 
-# Phase v04 Plan B: Structural Logic & Visuals Summary (Task 1)
+# Phase v04 Plan B: Structural Logic & Visuals Summary
 
-Implemented 3D RBF interpolation using principal component analysis to handle arbitrary surface orientations, specifically for fault modeling.
+Implemented 3D RBF interpolation and interactive fault picking.
 
 ## Task 1: 3D RBF Interpolation
 - **Goal:** Adapt `RbfInterpolator` for 3D inputs to handle high-angle/vertical planes.
-- **Outcome:** Successfully implemented PCA-based rotation. Input points are now projected onto their best-fit plane, interpolated in local $(u, v)$ coordinates, and then transformed back.
-- **Verification:** Added unit tests for vertical planes ($x = 1.0$), which pass by generating correct vertical meshes. Workspace-wide `cargo check` passed.
+- **Outcome:** Successfully implemented PCA-based rotation. Input points are now projected onto their best-fit plane.
 - **Commit:** `8285c8e` - feat(v04-phase-b-structural-logic): enhance RBF engine for 3D fault modeling
 
+## Task 3: Interactive Fault Picking
+- **Goal:** Implement interactive fault picking and real-time modeling.
+- **Outcome:** 
+  - Added `SketchFault` picking mode.
+  - Implemented click-and-drag sketching in `ViewportWidget`.
+  - Wired sketch completion to `Fault::update_mesh()` which uses the 3D RBF engine.
+  - Added 2D wireframe overlays for faults in the viewport for immediate feedback.
+- **Verification:** 
+  - Added unit test `test_fault_sketching` in `interpretation/mod.rs` to verify stick addition and mesh generation.
+  - Verified `cargo check --workspace` passes.
+- **Commit:** `feef8be` - feat(v04-phase-b-structural-logic): implement interactive fault picking and real-time modeling
+
 ## Deviations from Plan
-None. Step 1 and 2 of Task 1 were completed exactly as written.
+- **Task 2 (Transparent Surface Rendering) was skipped** as the specific instruction was to execute Task 3.
+- Added `FaultStick` and `Fault` helper methods to `InterpretationState` for better ergonomics.
 
 ## Known Stubs
-None. The iterative solver in `evaluate` and the `generate_mesh_3d` are fully functional. The `evaluate(x, y)` fallback for perfectly vertical planes is an inherent limitation of the 2.5D API, but handles the case gracefully by returning the centroid Z.
+- Task 2 implementation is still missing (Transparent Surface Rendering).
+- 3D Rendering of faults is currently fallback to 2D wireframe overlays in `ViewportWidget`.
 
 ## Self-Check: PASSED
-- [x] RBF adapt for 3D (PCA implemented)
-- [x] Unit tests for vertical planes added and passing
-- [x] Commit made
+- [x] RBF adapt for 3D
+- [x] Interactive Sketch Mode implemented
+- [x] Real-time mesh updates wired
+- [x] Unit tests passing
 - [x] cargo check passed

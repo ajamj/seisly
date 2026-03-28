@@ -1,4 +1,6 @@
-use super::{InterpretationState, Pick, Horizon, Fault, FaultStick};
+use super::{InterpretationState, Pick};
+#[allow(unused_imports)]
+use super::{Horizon, Fault, FaultStick};
 use uuid::Uuid;
 
 pub trait InterpretationCommand {
@@ -6,11 +8,14 @@ pub trait InterpretationCommand {
     fn undo(&mut self, state: &mut InterpretationState);
 }
 
+// History system commands - reserved for future undo/redo feature
+#[allow(dead_code)]
 pub struct AddPickCommand {
     horizon_id: Uuid,
     pick: Pick,
 }
 
+#[allow(dead_code)]
 impl AddPickCommand {
     pub fn new(horizon_id: Uuid, pick: Pick) -> Self {
         Self { horizon_id, pick }
@@ -33,12 +38,14 @@ impl InterpretationCommand for AddPickCommand {
     }
 }
 
+#[allow(dead_code)]
 pub struct DeletePickCommand {
     horizon_id: Uuid,
     pick: Pick,
     index: usize,
 }
 
+#[allow(dead_code)]
 impl DeletePickCommand {
     pub fn new(horizon_id: Uuid, pick: Pick, index: usize) -> Self {
         Self { horizon_id, pick, index }
@@ -55,18 +62,21 @@ impl InterpretationCommand for DeletePickCommand {
 
     fn undo(&mut self, state: &mut InterpretationState) {
         if let Some(horizon) = state.horizons.iter_mut().find(|h| h.id == self.horizon_id) {
-            self.horizon_id = self.horizon_id; // satisfy compiler if needed
+            // Use horizon_id to satisfy compiler about field usage
+            let _ = &self.horizon_id;
             horizon.picks.insert(self.index, self.pick.clone());
             horizon.update_mesh();
         }
     }
 }
 
+#[allow(dead_code)]
 pub struct AutoTrackCommand {
     horizon_id: Uuid,
     picks: Vec<Pick>,
 }
 
+#[allow(dead_code)]
 impl AutoTrackCommand {
     pub fn new(horizon_id: Uuid, picks: Vec<Pick>) -> Self {
         Self { horizon_id, picks }
@@ -92,11 +102,13 @@ impl InterpretationCommand for AutoTrackCommand {
     }
 }
 
+#[allow(dead_code)]
 pub struct GenerateSurfaceCommand {
     horizon_id: Uuid,
     // Note: In a real app, we might store the previous surface state
 }
 
+#[allow(dead_code)]
 impl GenerateSurfaceCommand {
     pub fn new(horizon_id: Uuid) -> Self {
         Self { horizon_id }
@@ -115,11 +127,13 @@ impl InterpretationCommand for GenerateSurfaceCommand {
     }
 }
 
+#[allow(dead_code)]
 pub struct AddFaultStickCommand {
     fault_id: Uuid,
     stick: FaultStick,
 }
 
+#[allow(dead_code)]
 impl AddFaultStickCommand {
     pub fn new(fault_id: Uuid, stick: FaultStick) -> Self {
         Self { fault_id, stick }
@@ -147,6 +161,7 @@ pub struct HistoryManager {
     redo_stack: Vec<Box<dyn InterpretationCommand>>,
 }
 
+#[allow(dead_code)]
 impl HistoryManager {
     pub fn new() -> Self {
         Self {

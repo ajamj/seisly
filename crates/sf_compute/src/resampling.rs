@@ -33,7 +33,7 @@ pub fn resample_trajectory(traj: &Trajectory, interval: f64) -> Trajectory {
 }
 
 /// Interpolate a station at a specific MD
-fn interpolate_station(traj: &Trajectory, md: f64) -> Station {
+pub fn interpolate_station(traj: &Trajectory, md: f64) -> Station {
     // Find surrounding stations
     for i in 0..traj.stations.len().saturating_sub(1) {
         let s0 = &traj.stations[i];

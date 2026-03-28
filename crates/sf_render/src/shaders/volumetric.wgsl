@@ -70,9 +70,15 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
             let color = textureSampleLevel(t_colormap, s_colormap, clamp(normalized_val, 0.0, 1.0), 0.0);
             
             let alpha = color.a * uniforms.opacity * step_size * 50.0;
-            
-            accumulated_color.rgb += (1.0 - accumulated_color.a) * color.rgb * alpha;
-            accumulated_color.a += (1.0 - accumulated_color.a) * alpha;
+
+            // WGSL does not support swizzle assignments, assign each component individually
+            let contribution = (1.0 - accumulated_color.a) * color.rgb * alpha;
+            accumulated_color = vec4<f32>(
+                accumulated_color.r + contribution.r,
+                accumulated_color.g + contribution.g,
+                accumulated_color.b + contribution.b,
+                accumulated_color.a + (1.0 - accumulated_color.a) * alpha
+            );
         }
         
         if (accumulated_color.a >= 0.95) {

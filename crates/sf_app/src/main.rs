@@ -2,6 +2,7 @@ mod app;
 mod widgets;
 mod ai_client;
 mod interpretation;
+mod ui_styles;
 use app::StrataForgeApp;
 
 fn main() -> eframe::Result<()> {

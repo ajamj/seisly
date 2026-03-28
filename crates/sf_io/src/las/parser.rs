@@ -1,19 +1,29 @@
 //! LAS (Log ASCII Standard) file parser
 
-use sf_core::domain::log::{Curve, DepthMnemonic, Log};
-use sf_core::EntityId;
+use sf_core::domain::well::{Well, WellLog};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum LasError {
-    #[error("Failed to read LAS file: {0}")]
-    IoError(#[from] std::io::Error),
-    #[error("Invalid LAS format: {0}")]
+    #[error("File not found: {0}")]
+    FileNotFound(String),
+    #[error("Parse error: {0}")]
     ParseError(String),
+    #[error("Invalid LAS version: {0}")]
+    InvalidVersion(String),
+    #[error("Missing required section: {0}")]
+    MissingSection(String),
     #[error("No data section found")]
     NoDataSection,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LasVersion {
+    Las20,
+    Las30,
+    Unknown,
 }
 
 /// Curve definition from LAS header
@@ -27,109 +37,163 @@ pub struct CurveDef {
 pub struct LasParser;
 
 impl LasParser {
-    pub fn parse(path: &Path) -> Result<Log, LasError> {
-        let file = std::fs::File::open(path)?;
+    /// Read LAS file and convert to Well model
+    pub fn read(path: &Path) -> Result<Well, LasError> {
+        // First pass: detect version
+        let version = Self::detect_version(path)?;
+        
+        // Second pass: parse file
+        let file = std::fs::File::open(path)
+            .map_err(|_| LasError::FileNotFound(path.display().to_string()))?;
         let reader = BufReader::new(file);
+        
+        match version {
+            LasVersion::Las20 => Self::parse_las_20(reader, path),
+            LasVersion::Las30 => Err(LasError::InvalidVersion("LAS 3.0 not yet implemented".to_string())),
+            LasVersion::Unknown => Err(LasError::InvalidVersion("Unknown LAS version".to_string())),
+        }
+    }
 
-        let mut curves: Vec<Curve> = Vec::new();
-        let mut in_data = false;
-        let mut depth_unit = "M".to_string();
+    /// Detect LAS version from file
+    fn detect_version(path: &Path) -> Result<LasVersion, LasError> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|_| LasError::FileNotFound(path.display().to_string()))?;
+        
+        for line in content.lines() {
+            let trimmed = line.trim();
+            
+            // Look for VERS. in any section
+            if trimmed.starts_with("VERS.") {
+                if trimmed.contains("2.0") {
+                    return Ok(LasVersion::Las20);
+                } else if trimmed.contains("3.0") {
+                    return Ok(LasVersion::Las30);
+                }
+            }
+        }
+        Ok(LasVersion::Unknown)
+    }
+
+    /// Parse LAS 2.0 format
+    fn parse_las_20<R: BufRead>(reader: R, _path: &Path) -> Result<Well, LasError> {
+        let mut well_name = String::new();
+        let mut data_lines = Vec::new();
+        let mut section = "OTHER";
         let mut null_value = -999.25f32;
+        let mut depth_unit = "M".to_string();
         let mut curve_defs: Vec<CurveDef> = Vec::new();
 
         for line in reader.lines() {
-            let line = line?;
-            let line = line.trim();
+            let line = line.map_err(|e| LasError::ParseError(e.to_string()))?;
+            let trimmed = line.trim();
 
-            if line.is_empty() {
+            if trimmed.starts_with('~') {
+                section = if trimmed.starts_with("~WELL") {
+                    "WELL"
+                } else if trimmed.starts_with("~CURVE") {
+                    "CURVE"
+                } else if trimmed.starts_with("~PARAMETER") || trimmed.starts_with("~PARAM") {
+                    "PARAM"
+                } else if trimmed.starts_with("~A") || trimmed.starts_with("~ASCII") {
+                    "DATA"
+                } else {
+                    "OTHER"
+                };
                 continue;
             }
 
-            // Check for NULL value in ~PARAMETER section
-            if line.starts_with("NULL.") {
-                if let Some(val) = line.split_whitespace().nth(1) {
-                    null_value = val.parse().unwrap_or(-999.25);
-                }
+            if section == "PARAM" && trimmed.starts_with(" NULL.") {
+                null_value = Self::extract_numeric_value(trimmed).unwrap_or(-999.25);
             }
 
-            // Check for depth unit in ~WELL section
-            if line.starts_with("STRT.") || line.starts_with("STOP.") {
-                if let Some(unit) = line
-                    .split('.')
-                    .nth(1)
-                    .and_then(|s| s.split_whitespace().next())
-                {
-                    depth_unit = unit.to_string();
-                }
-            }
-
-            // Parse curve definitions in ~CURVE section
-            if line.starts_with('~') {
-                in_data = line.to_uppercase().starts_with("~A");
-                continue;
-            }
-
-            if in_data {
-                // Parse data line
-                let values: Vec<f32> = line
-                    .split_whitespace()
-                    .filter_map(|v| v.parse().ok())
-                    .collect();
-
-                if values.is_empty() {
-                    continue;
-                }
-
-                // First value is depth, rest are curve values
-                for (i, &val) in values.iter().enumerate().skip(1) {
-                    if i > curves.len() {
-                        // Use curve definition if available, otherwise generate name
-                        let (mnemonic, unit) = if i - 1 < curve_defs.len() {
-                            (
-                                curve_defs[i - 1].mnemonic.clone(),
-                                curve_defs[i - 1].unit.clone(),
-                            )
-                        } else {
-                            (format!("CURVE_{}", i), "UNKNOWN".to_string())
-                        };
-
-                        curves.push(Curve {
-                            mnemonic,
-                            unit,
-                            values: vec![val],
-                            null_value,
-                        });
-                    } else {
-                        curves[i - 1].values.push(val);
+            if section == "WELL" {
+                if trimmed.starts_with(" WELL.") {
+                    well_name = Self::extract_value(trimmed).unwrap_or_default();
+                } else if trimmed.starts_with(" STRT.") {
+                    if let Some(unit) = Self::extract_unit(trimmed) {
+                        depth_unit = unit;
                     }
                 }
-            } else if line.starts_with(|c: char| c.is_whitespace() || c.is_alphabetic())
-                && !line.starts_with('~')
-            {
-                // Try to parse curve definition (e.g., " DEPT.M                      : 1  DEPTH")
-                if let Some(curve_def) = Self::parse_curve_def(line) {
+            }
+
+            if section == "CURVE" && !trimmed.is_empty() {
+                if let Some(curve_def) = Self::parse_curve_def(trimmed) {
                     curve_defs.push(curve_def);
                 }
             }
+
+            if section == "DATA" && !trimmed.is_empty() {
+                data_lines.push(trimmed.to_string());
+            }
         }
 
-        if curves.is_empty() {
+        if data_lines.is_empty() {
             return Err(LasError::NoDataSection);
         }
 
-        Ok(Log {
-            id: EntityId::new_v4(),
-            well_id: EntityId::new_v4(),
-            depth_mnemonic: DepthMnemonic::MD,
-            depth_unit,
-            curves,
-        })
+        // Parse data and create logs
+        let mut logs = Vec::new();
+        let mut all_depths = Vec::new();
+
+        for line in &data_lines {
+            let values: Vec<f32> = line
+                .split_whitespace()
+                .filter_map(|v| v.parse().ok())
+                .collect();
+
+            if values.is_empty() {
+                continue;
+            }
+
+            all_depths.push(values[0]);
+
+            // Process curve values (skip depth which is first)
+            for (i, &val) in values.iter().enumerate().skip(1) {
+                if val == null_value {
+                    continue; // Skip null values
+                }
+
+                if i > logs.len() {
+                    // Create new log
+                    let (mnemonic, unit) = if i - 1 < curve_defs.len() {
+                        (curve_defs[i - 1].mnemonic.clone(), curve_defs[i - 1].unit.clone())
+                    } else {
+                        (format!("CURVE_{}", i), "UNKNOWN".to_string())
+                    };
+
+                    let mut log = WellLog::new(mnemonic, unit, Vec::new(), Vec::new());
+                    log.data.push(val);
+                    logs.push(log);
+                } else {
+                    logs[i - 1].data.push(val);
+                }
+            }
+        }
+
+        // Set depths for all logs
+        for log in &mut logs {
+            log.depths = all_depths.clone();
+            if !log.depths.is_empty() {
+                log.min_depth = *log.depths.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
+                log.max_depth = *log.depths.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap_or(&0.0);
+            }
+        }
+
+        // Create Well model
+        let mut well = Well::new(
+            well_name.clone(),
+            well_name.clone(),
+            0.0, // X coordinate (not in LAS 2.0, set to 0)
+            0.0, // Y coordinate (not in LAS 2.0, set to 0)
+            0.0, // Elevation (not in LAS 2.0, set to 0)
+        );
+        well.logs = logs;
+
+        Ok(well)
     }
 
     /// Parse a curve definition line
     fn parse_curve_def(line: &str) -> Option<CurveDef> {
-        // Format: " MNEM.UNIT          : VALUE DESCRIPTION"
-        let line = line.trim();
         if line.starts_with('~') || line.is_empty() {
             return None;
         }
@@ -164,6 +228,40 @@ impl LasParser {
         }
 
         None
+    }
+
+    /// Extract numeric value from LAS line
+    fn extract_numeric_value(line: &str) -> Option<f32> {
+        line.split_whitespace()
+            .nth(1)
+            .and_then(|v| v.split('.').next())
+            .and_then(|v| v.parse().ok())
+    }
+
+    /// Extract string value from LAS line
+    fn extract_value(line: &str) -> Option<String> {
+        let parts: Vec<&str> = line.split(':').collect();
+        if parts.len() > 1 {
+            let value_part = parts[1];
+            let value = value_part.split('.').next().unwrap_or("").trim();
+            if !value.is_empty() {
+                return Some(value.to_string());
+            }
+        }
+        None
+    }
+
+    /// Extract unit from LAS line
+    fn extract_unit(line: &str) -> Option<String> {
+        let parts: Vec<&str> = line.split('.').collect();
+        if parts.len() > 1 {
+            parts[1]
+                .split_whitespace()
+                .next()
+                .map(|s| s.to_string())
+        } else {
+            None
+        }
     }
 }
 
@@ -204,9 +302,9 @@ mod tests {
         let temp_dir = create_test_las(las_content);
         let las_path = temp_dir.path().join("test.las");
 
-        let log = LasParser::parse(&las_path).unwrap();
-        assert!(!log.curves.is_empty());
-        assert!(log.curves[0].values.len() >= 2);
+        let well = LasParser::read(&las_path).unwrap();
+        assert!(!well.logs.is_empty());
+        assert!(well.logs[0].data.len() >= 2);
     }
 
     #[test]
@@ -220,7 +318,7 @@ mod tests {
         let temp_dir = create_test_las(las_content);
         let las_path = temp_dir.path().join("test.las");
 
-        let result = LasParser::parse(&las_path);
+        let result = LasParser::read(&las_path);
         assert!(result.is_err());
     }
 }

@@ -10,10 +10,13 @@ pub mod strataforge {
 use strataforge::analysis::detection_client::DetectionClient;
 use strataforge::analysis::SliceRequest;
 
+// AI Client - reserved for future ML integration
+#[allow(dead_code)]
 pub struct AiClient {
     client: DetectionClient<Channel>,
 }
 
+#[allow(dead_code)]
 impl AiClient {
     pub async fn connect(addr: String) -> Result<Self> {
         let client = DetectionClient::connect(addr).await?;
