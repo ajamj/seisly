@@ -2,7 +2,19 @@
 
 **Open-source subsurface interpretation and modeling platform**
 
+[![CI/CD](https://github.com/strataforge/strataforge/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/strataforge/strataforge/actions/workflows/ci-cd.yml)
+[![Coverage Status](https://codecov.io/gh/strataforge/strataforge/branch/master/graph/badge.svg)](https://codecov.io/gh/strataforge/strataforge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust Version](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
+
 StrataForge is a modern, reproducible platform for geoscientists and engineers to analyze subsurface data from exploration to production.
+
+## 🚀 Quick Stats
+
+- **Status:** v0.1.1 Beta (80% Production Ready)
+- **Tests:** 59 passing ✅
+- **Platform:** Windows, Linux, macOS
+- **License:** MIT
 
 ## Features (v0.1 MVP)
 

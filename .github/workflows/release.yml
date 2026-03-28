@@ -1,0 +1,89 @@
+name: Automated Releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., v0.1.1)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run (no push/tag)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Create Release ${{ github.event.inputs.version }}
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configure Git
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+
+    - name: Update version in Cargo.toml
+      run: |
+        VERSION="${{ github.event.inputs.version }}"
+        VERSION_CLEAN="${VERSION#v}"
+        
+        # Update workspace version
+        sed -i "s/^version = \".*\"/version = \"$VERSION_CLEAN\"/" Cargo.toml
+        
+        # Update all crate versions
+        find crates -name "Cargo.toml" -exec sed -i "s/^version = \".*\"/version = \"$VERSION_CLEAN\"/" {} \;
+        
+        echo "Updated versions to $VERSION_CLEAN"
+
+    - name: Commit version bump
+      if: ${{ !github.event.inputs.dry_run }}
+      run: |
+        git add Cargo.toml crates/*/Cargo.toml
+        git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
+        git tag -a "${{ github.event.inputs.version }}" -m "Release ${{ github.event.inputs.version }}"
+        git push origin master
+        git push origin "${{ github.event.inputs.version }}"
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          echo "## Initial Release" > CHANGELOG.md
+        else
+          echo "## ${{ github.event.inputs.version }} - $(date +%Y-%m-%d)" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD >> CHANGELOG.md
+        fi
+        
+        cat CHANGELOG.md
+
+    - name: Create GitHub Release
+      if: ${{ !github.event.inputs.dry_run }}
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        release_name: Release ${{ github.event.inputs.version }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: false
+
+    - name: Notify success
+      run: |
+        echo "✅ Release ${{ github.event.inputs.version }} created successfully!"
+        echo "📦 Tag: ${{ github.event.inputs.version }}"
+        echo "📝 Changelog generated"
