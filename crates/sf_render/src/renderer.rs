@@ -8,6 +8,11 @@ pub struct Renderer {
     pipeline: RenderPipeline,
     rgb_pipeline: RenderPipeline,
     pub rgb_bind_group_layout: wgpu::BindGroupLayout,
+    
+    // Volumetric rendering
+    pub volumetric_pipeline: RenderPipeline,
+    pub volumetric_bind_group_layout: wgpu::BindGroupLayout,
+    pub volumetric_uniform_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer {
@@ -179,7 +184,186 @@ impl Renderer {
             multiview: None,
         });
 
-        Self { pipeline, rgb_pipeline, rgb_bind_group_layout }
+        // Volumetric Pipeline
+        let volumetric_shader = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("Volumetric Shader"),
+            source: ShaderSource::Wgsl(include_str!("shaders/volumetric.wgsl").into()),
+        });
+
+        let volumetric_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                // 3D Volume Texture
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D3,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                // 1D Colormap Texture
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D1,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+            label: Some("volumetric_bind_group_layout"),
+        });
+
+        let volumetric_uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+            label: Some("volumetric_uniform_bind_group_layout"),
+        });
+
+        let volumetric_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Volumetric Pipeline Layout"),
+            bind_group_layouts: &[&volumetric_bind_group_layout, &volumetric_uniform_bind_group_layout],
+            push_constant_ranges: &[],
+        });
+
+        let volumetric_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Volumetric Pipeline"),
+            layout: Some(&volumetric_pipeline_layout),
+            vertex: VertexState {
+                module: &volumetric_shader,
+                entry_point: "vs_main",
+                buffers: &[
+                    wgpu::VertexBufferLayout {
+                        array_stride: 24, // 6 * 4 bytes
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[
+                            wgpu::VertexAttribute {
+                                offset: 0,
+                                shader_location: 0,
+                                format: wgpu::VertexFormat::Float32x3,
+                            },
+                            wgpu::VertexAttribute {
+                                offset: 12,
+                                shader_location: 1,
+                                format: wgpu::VertexFormat::Float32x3,
+                            },
+                        ],
+                    }
+                ],
+            },
+            fragment: Some(FragmentState {
+                module: &volumetric_shader,
+                entry_point: "fs_main",
+                targets: &[Some(ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
+        Self { 
+            pipeline, 
+            rgb_pipeline, 
+            rgb_bind_group_layout,
+            volumetric_pipeline,
+            volumetric_bind_group_layout,
+            volumetric_uniform_bind_group_layout,
+        }
+    }
+
+    pub fn create_volumetric_texture(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        width: u32,
+        height: u32,
+        depth: u32,
+        data: &[f32],
+    ) -> (wgpu::Texture, wgpu::TextureView) {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: depth,
+        };
+        
+        let mip_level_count = (width.max(height).max(depth) as f32).log2().floor() as u32 + 1;
+
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Volumetric Texture"),
+            size,
+            mip_level_count,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D3,
+            format: wgpu::TextureFormat::R32Float,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            bytemuck::cast_slice(data),
+            wgpu::ImageDataLayout {
+                offset: 0,
+                bytes_per_row: Some(width * 4),
+                rows_per_image: Some(height),
+            },
+            size,
+        );
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("Volumetric Texture View"),
+            dimension: Some(wgpu::TextureViewDimension::D3),
+            ..Default::default()
+        });
+
+        (texture, view)
     }
 
     pub fn render<'a>(&'a self, render_pass: &mut RenderPass<'a>, scene: &'a Scene, camera_pos: [f32; 3]) {
