@@ -8,6 +8,7 @@ pub mod seismic;
 pub mod tracking;
 pub mod triangulation;
 pub mod velocity;
+pub mod volumetrics;
 
 pub use interpolation::{RbfInterpolator, RbfType};
 pub use resampling::resample_trajectory;
