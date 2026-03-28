@@ -1,0 +1,10 @@
+[package]
+name = "sf_render"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sf_core.workspace = true
+wgpu.workspace = true
+nalgebra.workspace = true
+bytemuck = "1.14"

@@ -1,0 +1,79 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/sf_core",
+  "crates/sf_crs",
+  "crates/sf_storage",
+  "crates/sf_io",
+  "crates/sf_compute",
+  "crates/sf_render",
+  "crates/sf_cli",
+  "crates/sf_app",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/strataforge/strataforge"
+
+[workspace.dependencies]
+# StrataForge Workspace Members
+sf_core = { path = "crates/sf_core" }
+sf_crs = { path = "crates/sf_crs" }
+sf_storage = { path = "crates/sf_storage" }
+sf_io = { path = "crates/sf_io" }
+sf_compute = { path = "crates/sf_compute" }
+sf_render = { path = "crates/sf_render" }
+sf_cli = { path = "crates/sf_cli" }
+sf_app = { path = "crates/sf_app" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Utilities
+uuid = { version = "1.4", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Hashing
+blake3 = "1.5"
+
+# CRS
+proj = "0.31"
+
+# Compute
+rayon = "1.8"
+spade = "2.4"
+nalgebra = "0.32"
+ndarray = "0.15"
+
+# Async
+tokio = { version = "1.35", features = ["full"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Desktop (for sf_app)
+egui = "0.26"
+eframe = "0.26"
+wgpu = "0.19"
+winit = "0.29"
+
+# Server (for sf_server)
+axum = "0.7"
+tower = "0.4"
+utoipa = { version = "4.2", features = ["axum_extras"] }
+
+# Testing
+tempfile = "3.9"

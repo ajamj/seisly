@@ -1,0 +1,63 @@
+<h2>Hybrid Architecture Overview</h2>
+<p class="subtitle">Rust for performance and UI, Python for Deep Learning</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">System Components & Data Flow</div>
+    <div class="mockup-body" style="padding: 20px;">
+      <div style="display: flex; justify-content: space-around; align-items: center; gap: 40px;">
+        
+        <!-- Rust Layer -->
+        <div style="flex: 1; border: 2px solid var(--accent); border-radius: 8px; padding: 15px; background: rgba(var(--accent-rgb), 0.1);">
+          <h3 style="text-align: center; color: var(--accent);">Rust (Core & UI)</h3>
+          <ul style="list-size: none; padding: 0;">
+            <li class="label">Responsibilities:</li>
+            <li>• Desktop UI (egui/wgpu)</li>
+            <li>• Seismic Data I/O (SEG-Y)</li>
+            <li>• 3D Visualization</li>
+            <li>• Project Management</li>
+          </ul>
+        </div>
+
+        <!-- Bridge -->
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <div style="font-size: 24px;">⇄</div>
+          <div class="label" style="text-align: center;">PyO3 / IPC<br>Communication</div>
+        </div>
+
+        <!-- Python Layer -->
+        <div style="flex: 1; border: 2px solid var(--warning); border-radius: 8px; padding: 15px; background: rgba(var(--warning-rgb), 0.1);">
+          <h3 style="text-align: center; color: var(--warning);">Python (AI/DL)</h3>
+          <ul style="list-size: none; padding: 0;">
+            <li class="label">Responsibilities:</li>
+            <li>• Fault Detection Models</li>
+            <li>• Horizon Tracking (CNNs)</li>
+            <li>• Seismic Attribute Computation</li>
+            <li>• Research & Prototyping</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Which "Integration Method" should we start with?</h3>
+<p class="subtitle">This determines how Rust and Python talk to each other.</p>
+
+<div class="options">
+  <div class="option" data-choice="pyo3" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Embedded Python (PyO3)</h3>
+      <p>Python runs inside the Rust app. Fast data sharing, but more complex setup.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="rpc" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Microservice (gRPC/HTTP)</h3>
+      <p>Python runs as a separate process. Easier to debug and update AI independently.</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,12 @@
+[package]
+name = "sf_io"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sf_core.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

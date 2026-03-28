@@ -1,0 +1,45 @@
+<h2>v0.2 Design Summary: The AI-First Workstation</h2>
+<p class="subtitle">A robust foundation for autonomous subsurface interpretation.</p>
+
+<div class="pros-cons">
+  <div class="pros">
+    <h4>Key Features</h4>
+    <ul>
+      <li><strong>3D Seismic Engine:</strong> High-performance wgpu-based volume and slice viewer.</li>
+      <li><strong>AI Microservice:</strong> Decoupled PyTorch service for fault detection.</li>
+      <li><strong>Low-Latency Bridge:</strong> gRPC for efficient data transfer between Rust and Python.</li>
+      <li><strong>Unified Desktop UI:</strong> Professional dark-themed interpretation environment.</li>
+    </ul>
+  </div>
+  <div class="cons">
+    <h4>Technical Constraints</h4>
+    <ul>
+      <li>Requires Python 3.10+ and a CUDA-capable GPU for AI acceleration.</li>
+      <li>Initial build will focus on local execution (laptop/workstation).</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 20px;">
+  <h3 class="label">System Architecture</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="padding: 15px;">
+      <p><strong>[Rust Desktop App]</strong> ⟷ (gRPC/ProtoBuf) ⟷ <strong>[Python AI Service]</strong></p>
+      <ul style="font-size: 13px; color: var(--text-muted);">
+        <li>• Rust handles large memory management (SEG-Y) and real-time rendering.</li>
+        <li>• Python handles 3D CNN inference and model training.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>Does this architecture and scope look right to move to the planning phase?</h3>
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Approve Design</h3>
+      <p>This is exactly what I want. Let's write the spec.</p>
+    </div>
+  </div>
+</div>

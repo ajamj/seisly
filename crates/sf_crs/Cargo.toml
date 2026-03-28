@@ -1,0 +1,12 @@
+[package]
+name = "sf_crs"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sf_core.workspace = true
+proj.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

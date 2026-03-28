@@ -1,0 +1,21 @@
+[package]
+name = "sf_app"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "sf-app"
+path = "src/main.rs"
+
+[dependencies]
+sf_core.workspace = true
+sf_storage.workspace = true
+sf_io.workspace = true
+sf_compute.workspace = true
+sf_render.workspace = true
+eframe = { workspace = true, features = ["wgpu"] }
+egui.workspace = true
+wgpu.workspace = true
+winit.workspace = true
+anyhow.workspace = true
+tokio.workspace = true

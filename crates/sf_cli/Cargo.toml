@@ -1,0 +1,18 @@
+[package]
+name = "sf_cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "sf"
+path = "src/main.rs"
+
+[dependencies]
+sf_core.workspace = true
+sf_storage.workspace = true
+sf_io.workspace = true
+sf_compute.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+uuid.workspace = true

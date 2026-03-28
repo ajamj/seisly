@@ -1,0 +1,37 @@
+<h2>AI/Deep Learning Framework</h2>
+<p class="subtitle">Which Python ecosystem should we use for the AI models?</p>
+
+<div class="options">
+  <div class="option" data-choice="pytorch" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>PyTorch (Recommended)</h3>
+      <p>Industry standard for geophysics research. Better support for complex 3D CNNs and easier to debug models.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tensorflow" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>TensorFlow</h3>
+      <p>Very strong production deployment tools, but can be more restrictive for research-heavy tasks like fault detection.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+  <h3 class="label">Initial Focus Area</h3>
+  <div class="cards" data-multiselect>
+    <div class="card" data-choice="faults" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>Fault Detection</h3>
+        <p>3D edge detection to find structural breaks in seismic data.</p>
+      </div>
+    </div>
+    <div class="card" data-choice="horizons" onclick="toggleSelect(this)">
+      <div class="card-body">
+        <h3>Horizon Tracking</h3>
+        <p>CNN-based sequence tracking for geological boundaries.</p>
+      </div>
+    </div>
+  </div>
+</div>

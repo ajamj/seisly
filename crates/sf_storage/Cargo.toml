@@ -1,0 +1,17 @@
+[package]
+name = "sf_storage"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sf_core.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+rusqlite.workspace = true
+blake3.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

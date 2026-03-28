@@ -1,0 +1,12 @@
+[package]
+name = "sf_compute"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sf_core.workspace = true
+spade.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+uuid.workspace = true
