@@ -1,0 +1,6 @@
+[target.x86_64-pc-windows-gnu]
+linker = "C:\\Users\\Thinkpad\\scoop\\apps\\gcc\\current\\bin\\gcc.exe"
+rustflags = [
+    "-L", "C:\\Users\\Thinkpad\\scoop\\apps\\gcc\\current\\x86_64-w64-mingw32\\lib",
+    "-L", "C:\\Users\\Thinkpad\\scoop\\apps\\gcc\\current\\lib\\gcc\\x86_64-w64-mingw32\\15.2.0"
+]
