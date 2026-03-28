@@ -4,9 +4,17 @@ use crate::interpretation::{InterpretationState, Pick, PickSource, PickingMode};
 use sf_compute::seismic::SeismicVolume;
 use sf_compute::tracking::{snap_to_extrema, track_event};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewMode {
+    Map,
+    Section,
+}
+
 pub struct ViewportWidget {
     pub target_format: Option<eframe::wgpu::TextureFormat>,
     pub sketch_points: Vec<[f32; 3]>,
+    pub view_mode: ViewMode,
+    pub section_xline: i32,
 }
 
 impl ViewportWidget {
@@ -14,6 +22,8 @@ impl ViewportWidget {
         Self {
             target_format: None,
             sketch_points: Vec::new(),
+            view_mode: ViewMode::Map,
+            section_xline: 250,
         }
     }
 
@@ -23,8 +33,18 @@ impl ViewportWidget {
         interpretation: &mut InterpretationState,
         volume: Option<&SeismicVolume>,
     ) {
+        ui.horizontal(|ui| {
+            ui.selectable_value(&mut self.view_mode, ViewMode::Map, "Map View");
+            ui.selectable_value(&mut self.view_mode, ViewMode::Section, "Section View");
+            if self.view_mode == ViewMode::Section {
+                ui.add(egui::Slider::new(&mut self.section_xline, 0..=500).text("Xline Slice"));
+            }
+        });
+
         let (rect, response) = ui.allocate_at_least(ui.available_size(), egui::Sense::drag());
         
+        let sample_count = volume.map(|v| v.provider.sample_count()).unwrap_or(500) as f32;
+
         if interpretation.picking_mode == PickingMode::SketchFault {
             if response.drag_started() {
                 self.sketch_points.clear();
@@ -33,16 +53,19 @@ impl ViewportWidget {
                 if let Some(pos) = response.interact_pointer_pos() {
                     let rel_x = (pos.x - rect.min.x) / rect.width();
                     let rel_y = (pos.y - rect.min.y) / rect.height();
-                    let iline = (rel_x * 500.0) as f32;
-                    let xline = (rel_y * 500.0) as f32;
-                    let sample = 250.0f32; // Fixed depth for 2D sketch
+                    
+                    let (iline, xline, sample) = match self.view_mode {
+                        ViewMode::Map => (rel_x * 500.0, rel_y * 500.0, 250.0),
+                        ViewMode::Section => (rel_x * 500.0, self.section_xline as f32, rel_y * sample_count),
+                    };
                     
                     // Simple distance check to avoid redundant points
                     if self.sketch_points.is_empty() || 
-                       (pos.to_vec2() - egui::pos2(
-                           rect.min.x + (self.sketch_points.last().unwrap()[0]/500.0)*rect.width(),
-                           rect.min.y + (self.sketch_points.last().unwrap()[1]/500.0)*rect.height()
-                       ).to_vec2()).length() > 5.0 
+                       (pos.to_vec2() - self.project_to_screen([
+                           self.sketch_points.last().unwrap()[0],
+                           self.sketch_points.last().unwrap()[1],
+                           self.sketch_points.last().unwrap()[2],
+                       ], rect, sample_count).to_vec2()).length() > 5.0 
                     {
                         self.sketch_points.push([iline, xline, sample]);
                     }
@@ -77,11 +100,31 @@ impl ViewportWidget {
         ui.painter().rect_stroke(rect, 0.0, (1.0, egui::Color32::DARK_GRAY));
 
         // 2D Overlay Visualization (Fallback for stub 3D renderer)
-        self.draw_overlays(ui, rect, interpretation);
-        self.draw_fault_overlays(ui, rect, interpretation);
+        self.draw_overlays(ui, rect, interpretation, sample_count);
+        self.draw_fault_overlays(ui, rect, interpretation, sample_count);
     }
 
-    fn draw_overlays(&self, ui: &mut egui::Ui, rect: egui::Rect, interpretation: &InterpretationState) {
+    fn project_to_screen(&self, pos: [f32; 3], rect: egui::Rect, sample_count: f32) -> egui::Pos2 {
+        match self.view_mode {
+            ViewMode::Map => egui::pos2(
+                rect.min.x + (pos[0] / 500.0) * rect.width(),
+                rect.min.y + (pos[1] / 500.0) * rect.height(),
+            ),
+            ViewMode::Section => egui::pos2(
+                rect.min.x + (pos[0] / 500.0) * rect.width(),
+                rect.min.y + (pos[2] / sample_count) * rect.height(),
+            ),
+        }
+    }
+
+    fn is_visible_in_view(&self, pos: [f32; 3]) -> bool {
+        match self.view_mode {
+            ViewMode::Map => true,
+            ViewMode::Section => (pos[1] - self.section_xline as f32).abs() < 10.0,
+        }
+    }
+
+    fn draw_overlays(&self, ui: &mut egui::Ui, rect: egui::Rect, interpretation: &InterpretationState, sample_count: f32) {
         let painter = ui.painter().with_clip_rect(rect);
 
         for horizon in &interpretation.horizons {
@@ -95,9 +138,10 @@ impl ViewportWidget {
 
             // Draw Picks
             for pick in &horizon.picks {
-                let x = rect.min.x + (pick.position[0] / 500.0) * rect.width();
-                let y = rect.min.y + (pick.position[1] / 500.0) * rect.height();
-                painter.circle_filled(egui::pos2(x, y), 3.0, color);
+                if self.is_visible_in_view(pick.position) {
+                    let screen_pos = self.project_to_screen(pick.position, rect, sample_count);
+                    painter.circle_filled(screen_pos, 3.0, color);
+                }
             }
 
             // Draw Surface Mesh (as wireframe in 2D)
@@ -108,34 +152,28 @@ impl ViewportWidget {
                         let p2 = mesh.vertices[chunk[1] as usize];
                         let p3 = mesh.vertices[chunk[2] as usize];
 
-                        let pts = [p1, p2, p3].map(|p| {
-                            egui::pos2(
-                                rect.min.x + (p[0] / 500.0) * rect.width(),
-                                rect.min.y + (p[1] / 500.0) * rect.height(),
-                            )
-                        });
+                        if self.is_visible_in_view(p1) || self.is_visible_in_view(p2) || self.is_visible_in_view(p3) {
+                            let pts = [p1, p2, p3].map(|p| self.project_to_screen(p, rect, sample_count));
 
-                        painter.line_segment([pts[0], pts[1]], (0.5, color.linear_multiply(0.3)));
-                        painter.line_segment([pts[1], pts[2]], (0.5, color.linear_multiply(0.3)));
-                        painter.line_segment([pts[2], pts[0]], (0.5, color.linear_multiply(0.3)));
+                            painter.line_segment([pts[0], pts[1]], (0.5, color.linear_multiply(0.3)));
+                            painter.line_segment([pts[1], pts[2]], (0.5, color.linear_multiply(0.3)));
+                            painter.line_segment([pts[2], pts[0]], (0.5, color.linear_multiply(0.3)));
+                        }
                     }
                 }
             }
         }
     }
 
-    fn draw_fault_overlays(&self, ui: &mut egui::Ui, rect: egui::Rect, interpretation: &InterpretationState) {
+    fn draw_fault_overlays(&self, ui: &mut egui::Ui, rect: egui::Rect, interpretation: &InterpretationState, sample_count: f32) {
         let painter = ui.painter().with_clip_rect(rect);
 
         // Draw active sketch
         if !self.sketch_points.is_empty() {
             let color = egui::Color32::YELLOW;
-            let pts: Vec<egui::Pos2> = self.sketch_points.iter().map(|p| {
-                egui::pos2(
-                    rect.min.x + (p[0] / 500.0) * rect.width(),
-                    rect.min.y + (p[1] / 500.0) * rect.height(),
-                )
-            }).collect();
+            let pts: Vec<egui::Pos2> = self.sketch_points.iter()
+                .map(|&p| self.project_to_screen(p, rect, sample_count))
+                .collect();
             
             for i in 0..pts.len() - 1 {
                 painter.line_segment([pts[i], pts[i+1]], (2.0, color));
@@ -153,15 +191,15 @@ impl ViewportWidget {
 
             // Draw Sticks
             for stick in &fault.sticks {
-                let pts: Vec<egui::Pos2> = stick.picks.iter().map(|p| {
-                    egui::pos2(
-                        rect.min.x + (p[0] / 500.0) * rect.width(),
-                        rect.min.y + (p[1] / 500.0) * rect.height(),
-                    )
-                }).collect();
+                let pts: Vec<egui::Pos2> = stick.picks.iter()
+                    .filter(|&&p| self.is_visible_in_view(p))
+                    .map(|&p| self.project_to_screen(p, rect, sample_count))
+                    .collect();
                 
-                for i in 0..pts.len() - 1 {
-                    painter.line_segment([pts[i], pts[i+1]], (1.5, color));
+                if pts.len() > 1 {
+                    for i in 0..pts.len() - 1 {
+                        painter.line_segment([pts[i], pts[i+1]], (1.5, color));
+                    }
                 }
                 for pt in &pts {
                     painter.circle_filled(*pt, 2.0, color);
@@ -176,16 +214,13 @@ impl ViewportWidget {
                         let p2 = mesh.vertices[chunk[1] as usize];
                         let p3 = mesh.vertices[chunk[2] as usize];
 
-                        let pts = [p1, p2, p3].map(|p| {
-                            egui::pos2(
-                                rect.min.x + (p[0] / 500.0) * rect.width(),
-                                rect.min.y + (p[1] / 500.0) * rect.height(),
-                            )
-                        });
+                        if self.is_visible_in_view(p1) || self.is_visible_in_view(p2) || self.is_visible_in_view(p3) {
+                            let pts = [p1, p2, p3].map(|p| self.project_to_screen(p, rect, sample_count));
 
-                        painter.line_segment([pts[0], pts[1]], (0.5, color.linear_multiply(0.5)));
-                        painter.line_segment([pts[1], pts[2]], (0.5, color.linear_multiply(0.5)));
-                        painter.line_segment([pts[2], pts[0]], (0.5, color.linear_multiply(0.5)));
+                            painter.line_segment([pts[0], pts[1]], (0.5, color.linear_multiply(0.5)));
+                            painter.line_segment([pts[1], pts[2]], (0.5, color.linear_multiply(0.5)));
+                            painter.line_segment([pts[2], pts[0]], (0.5, color.linear_multiply(0.5)));
+                        }
                     }
                 }
             }
@@ -199,14 +234,23 @@ impl ViewportWidget {
         interpretation: &mut InterpretationState,
         volume: Option<&SeismicVolume>,
     ) {
-        // Simple projection: Map screen space to inline/xline/sample
-        // viewport rect: min_inline=0, max_inline=500, min_xline=0, max_xline=500
         let rel_x = (pos.x - rect.min.x) / rect.width();
         let rel_y = (pos.y - rect.min.y) / rect.height();
 
-        let iline = (rel_x * 500.0) as i32;
-        let xline = (rel_y * 500.0) as i32;
-        let mut sample = 250usize; // Default mid-depth
+        let sample_count = volume.map(|v| v.provider.sample_count()).unwrap_or(500);
+
+        let (iline, xline, mut sample) = match self.view_mode {
+            ViewMode::Map => (
+                (rel_x * 500.0) as i32,
+                (rel_y * 500.0) as i32,
+                250usize,
+            ),
+            ViewMode::Section => (
+                (rel_x * 500.0) as i32,
+                self.section_xline,
+                (rel_y * sample_count as f32) as usize,
+            ),
+        };
 
         if let Some(vol) = volume {
             if let Some(trace) = vol.provider.get_trace(iline, xline) {
