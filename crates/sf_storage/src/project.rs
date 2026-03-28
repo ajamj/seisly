@@ -25,6 +25,17 @@ pub struct ProjectManifest {
     pub version: String,
     #[serde(default)]
     pub datasets: Vec<String>,
+    #[serde(default)]
+    pub seismic_volumes: Vec<SeismicVolumeEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SeismicVolumeEntry {
+    pub id: String,
+    pub name: String,
+    pub path: String,
+    pub is_visible: bool,
+    pub channel_assignment: u8, // 0: None, 1: Red, 2: Green, 3: Blue
 }
 
 impl ProjectManifest {
@@ -35,6 +46,7 @@ impl ProjectManifest {
             created_at: chrono::Utc::now().to_rfc3339(),
             version: "0.1.0".to_string(),
             datasets: vec![],
+            seismic_volumes: vec![],
         }
     }
 

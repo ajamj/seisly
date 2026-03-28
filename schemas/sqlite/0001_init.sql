@@ -106,3 +106,14 @@ CREATE TABLE IF NOT EXISTS fault_sticks (
     picks_blob BLOB NOT NULL, -- Serialized Vec<[f32; 3]>
     FOREIGN KEY(fault_id) REFERENCES faults(id) ON DELETE CASCADE
 );
+
+-- Seismic Volumes (for multi-volume management)
+CREATE TABLE IF NOT EXISTS seismic_volumes (
+    id TEXT PRIMARY KEY,
+    dataset_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    is_visible INTEGER NOT NULL DEFAULT 1,
+    channel_assignment INTEGER NOT NULL DEFAULT 0, -- 0: None, 1: Red, 2: Green, 3: Blue
+    FOREIGN KEY(dataset_id) REFERENCES datasets(id) ON DELETE CASCADE
+);
