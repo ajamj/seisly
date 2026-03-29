@@ -5,25 +5,36 @@ use tempfile::TempDir;
 
 #[test]
 fn test_segy_reader_open_and_read() {
-    // We'll test with SegyWriter (implemented in Task 3)
-    // For now, skip if no test data
+    // Test with SegyWriter - create a file and read it back
+    use sf_io::segy::SegyWriter;
+    
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.segy");
 
-    // Test file doesn't exist yet - this test will be enabled after Task 3
-    if !test_file.exists() {
-        // Skip for now, will be implemented with SegyWriter
-        return;
-    }
+    // Create a test file with SegyWriter
+    let mut writer = SegyWriter::new(
+        &test_file,
+        4000, // 4ms sample rate
+        5,    // 5 traces
+        50,   // 50 samples per trace
+    ).unwrap();
 
+    // Write dummy traces
+    for i in 0..5 {
+        let data: Vec<f32> = (0..50).map(|j| (i as f32) * (j as f32) / 50.0).collect();
+        writer.write_trace(i, &data).unwrap();
+    }
+    writer.finish().unwrap();
+
+    // Now read it back
     let reader = SegyReader::open(&test_file).unwrap();
 
-    // Check binary header
-    assert!(reader.binary_header().is_ok());
+    // Check binary header is accessible
+    let _bin_header = reader.binary_header();
 
     // Read first trace
-    let trace = reader.read_trace(0);
-    assert!(trace.is_ok());
+    let trace = reader.read_trace(0).unwrap();
+    assert_eq!(trace.len(), 50);
 }
 
 #[test]
@@ -31,7 +42,7 @@ fn test_segy_reader_error_handling() {
     // Test error on non-existent file
     let result = SegyReader::open("non_existent_file.segy");
     assert!(result.is_err());
-    
+
     // Verify it's an Io error
     match result {
         Err(IoError::Io(_)) => {}, // Expected

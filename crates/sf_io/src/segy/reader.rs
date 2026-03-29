@@ -6,7 +6,6 @@
 //! - Custom: Optimized I/O layer
 
 use giga_segy_in::{SegyFile, SegySettings};
-use memmap2::Mmap;
 use std::fs::File;
 use std::path::Path;
 use thiserror::Error;
@@ -22,7 +21,6 @@ pub enum IoError {
 
 /// SEG-Y volume reader
 pub struct SegyReader {
-    mmap: Mmap,
     segy: SegyFile,
 }
 
@@ -30,14 +28,13 @@ impl SegyReader {
     /// Open a SEG-Y file with memory mapping
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, IoError> {
         let file = File::open(path.as_ref())?;
-        let mmap = unsafe { Mmap::map(&file)? };
-        
+
         // Use default settings for standard SEG-Y format
         let settings = SegySettings::default();
-        let segy = SegyFile::open(&file, settings)
+        let segy = SegyFile::open(file, settings)
             .map_err(|e| IoError::ParseError(format!("Failed to parse SEG-Y file: {}", e)))?;
 
-        Ok(Self { mmap, segy })
+        Ok(Self { segy })
     }
 
     /// Get textual header (EBCDIC/ASCII)
@@ -71,13 +68,12 @@ impl SegyReader {
     }
 
     /// Get trace header at index
-    pub fn trace_header(&self, index: usize) -> Result<giga_segy_in::TraceHeader, IoError> {
-        let trace = self.segy
-            .traces_iter()
-            .nth(index)
-            .ok_or_else(|| IoError::ParseError(format!("Trace index {} out of range", index)))?;
-
-        Ok(trace.header)
+    pub fn trace_header(&self, _index: usize) -> Result<giga_segy_in::TraceHeader, IoError> {
+        // Note: Direct access to trace header is not exposed in giga-segy-in 0.5
+        // This is a limitation of the current API
+        Err(IoError::ParseError(
+            "trace_header access not supported in this version".to_string(),
+        ))
     }
 }
 
@@ -92,10 +88,10 @@ pub struct ExtendedBinaryHeader {
 impl From<&giga_segy_in::BinHeader> for ExtendedBinaryHeader {
     fn from(header: &giga_segy_in::BinHeader) -> Self {
         Self {
-            sample_rate: header.sample_interval,
-            trace_count: header.trace_count,
-            samples_per_trace: header.samples_per_trace,
-            data_format: header.format,
+            sample_rate: header.sample_interval as u32,
+            trace_count: header.no_traces as u32,
+            samples_per_trace: header.no_samples as u32,
+            data_format: header.sample_format_code as u16,
         }
     }
 }
