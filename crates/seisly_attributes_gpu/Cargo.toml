@@ -9,7 +9,7 @@ description = "GPU-accelerated seismic attribute computation using wgpu"
 [dependencies]
 wgpu.workspace = true
 thiserror.workspace = true
-sf_attributes = { workspace = true }
+seisly_attributes.workspace = true
 bytemuck = { version = "1.14", features = ["derive"] }
 
 [dev-dependencies]
