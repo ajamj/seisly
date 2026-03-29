@@ -2,6 +2,8 @@
 //!
 //! Uses CNN to predict horizon position from seismic patches.
 
+use std::collections::{HashSet, VecDeque};
+
 use crate::cnn::HorizonCNN;
 use candle_core::{Device, Tensor};
 use sf_core::domain::surface::{Mesh, Surface};
@@ -27,25 +29,98 @@ impl AutoTracker {
         self.patch_size
     }
 
-    /// Track horizon from seed point
+    /// Track horizon from seed point using CNN
     pub fn track<P: TraceProvider>(
         &self,
-        _seismic: &P,
+        seismic: &P,
         seed_il: i32,
         seed_xl: i32,
         seed_sample: usize,
     ) -> Result<Surface, String> {
-        // Create a simple mesh from seed point
-        // In production: use CNN to predict horizon at each point and build full mesh
-        let vertices = vec![[seed_il as f32, seed_xl as f32, seed_sample as f32]];
-        let indices = vec![];
-        let mesh = Mesh::new(vertices, indices);
-        
-        Ok(Surface::new(
+        let mut picks: Vec<(i32, i32, f32)> = Vec::new();
+        let mut queue: VecDeque<(i32, i32, f32)> = VecDeque::new();
+
+        // Add seed point (convert sample index to f32 for offset arithmetic)
+        queue.push_back((seed_il, seed_xl, seed_sample as f32));
+        let mut visited: HashSet<(i32, i32)> = HashSet::new();
+
+        let (il_min, il_max) = seismic.inline_range();
+        let (xl_min, xl_max) = seismic.crossline_range();
+
+        while let Some((il, xl, twt)) = queue.pop_front() {
+            if visited.contains(&(il, xl)) {
+                continue;
+            }
+            visited.insert((il, xl));
+
+            // Extract patch and predict
+            let patch = self
+                .extract_patch(seismic, il, xl, twt as usize)
+                .unwrap_or_else(|_| self.create_zero_patch());
+            let offset = self.predict_horizon_offset(&patch).unwrap_or(0.0);
+
+            let new_twt = twt + offset;
+            picks.push((il, xl, new_twt));
+
+            // Add neighbors to queue (4-connectivity)
+            for (di, dj) in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
+                let ni = il.wrapping_add(di);
+                let nj = xl.wrapping_add(dj);
+
+                // Check bounds
+                if ni >= il_min && ni <= il_max && nj >= xl_min && nj <= xl_max {
+                    if !visited.contains(&(ni, nj)) {
+                        queue.push_back((ni, nj, new_twt));
+                    }
+                }
+            }
+        }
+
+        // Convert picks to Surface
+        Ok(self.picks_to_surface(&picks))
+    }
+
+    /// Predict horizon offset using CNN
+    fn predict_horizon_offset(&self, patch: &Tensor) -> Result<f32, String> {
+        let output = self.model.forward(patch).map_err(|e| e.to_string())?;
+
+        // Extract scalar value from output tensor
+        let offset = output
+            .to_vec1::<f32>()
+            .map_err(|e| e.to_string())?
+            .first()
+            .copied()
+            .unwrap_or(0.0);
+
+        Ok(offset)
+    }
+
+    /// Convert horizon picks to Surface
+    fn picks_to_surface(&self, picks: &[(i32, i32, f32)]) -> Surface {
+        // Convert picks to mesh vertices
+        let vertices: Vec<[f32; 3]> = picks
+            .iter()
+            .map(|(il, xl, twt)| [*il as f32, *xl as f32, *twt])
+            .collect();
+
+        // Create mesh from vertices (no indices for point cloud)
+        let mesh = Mesh::new(vertices, vec![]);
+
+        Surface::new(
             "AutoTracked Horizon".to_string(),
             Crs::wgs84(),
             vec![mesh],
-        ))
+        )
+    }
+
+    /// Create a zero-filled patch for error cases
+    fn create_zero_patch(&self) -> Tensor {
+        Tensor::zeros(
+            (1, 1, self.patch_size, self.patch_size),
+            candle_core::DType::F32,
+            &Device::Cpu,
+        )
+        .unwrap()
     }
 
     /// Extract seismic patch around point
