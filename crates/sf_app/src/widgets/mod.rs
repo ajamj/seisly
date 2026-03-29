@@ -5,6 +5,7 @@ pub mod velocity_panel;
 pub mod viewport;
 pub mod well_panel;
 pub mod synthetic_data;
+pub mod settings_panel;
 
 // Re-exports for app.rs - allowed unused as they are public API
 #[allow(unused_imports)]
@@ -21,3 +22,5 @@ pub use viewport::ViewportWidget;
 pub use well_panel::WellPanel;
 #[allow(unused_imports)]
 pub use synthetic_data::SyntheticDataWidget;
+#[allow(unused_imports)]
+pub use settings_panel::SettingsPanel;

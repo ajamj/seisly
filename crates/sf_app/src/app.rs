@@ -60,6 +60,8 @@ pub struct StrataForgeApp {
     current_project_path: Option<std::path::PathBuf>,
     #[allow(dead_code)]
     recent_projects: Vec<std::path::PathBuf>,
+    settings: crate::widgets::settings_panel::SettingsPanel,
+    show_settings: bool,
 }
 
 impl StrataForgeApp {
@@ -148,6 +150,8 @@ impl StrataForgeApp {
             theme_manager,
             current_project_path: None,
             recent_projects: Vec::new(),
+            settings: crate::widgets::settings_panel::SettingsPanel::new(),
+            show_settings: false,
         }
     }
 
@@ -274,6 +278,97 @@ impl StrataForgeApp {
 
 impl eframe::App for StrataForgeApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Menu Bar - Native desktop app style
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                // File menu
+                ui.menu_button("📁 File", |ui| {
+                    if ui.button("New Project\tCtrl+N").clicked() {
+                        // New project
+                    }
+                    if ui.button("Open Project\tCtrl+O").clicked() {
+                        // Open project
+                    }
+                    if ui.button("Save Project\tCtrl+S").clicked() {
+                        // Save project
+                    }
+                    ui.separator();
+                    if ui.button("Import Seismic\tCtrl+I").clicked() {
+                        // Import seismic
+                    }
+                    if ui.button("Import Well\tCtrl+W").clicked() {
+                        // Import well
+                    }
+                    ui.separator();
+                    if ui.button("Exit\tAlt+F4").clicked() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                });
+
+                // Tools menu
+                ui.menu_button("🔧 Tools", |ui| {
+                    if ui.button("Generate Synthetic Data\tCtrl+G").clicked() {
+                        // Show synthetic data generator
+                    }
+                    if ui.button("Velocity Modeling\tV").clicked() {
+                        // Show velocity panel
+                    }
+                    if ui.button("Well-Seismic Tie\tT").clicked() {
+                        // Show well tie
+                    }
+                    ui.separator();
+                    if ui.button("⚙️ Settings...").clicked() {
+                        self.show_settings = true;
+                    }
+                });
+
+                // View menu
+                ui.menu_button("👁 View", |ui| {
+                    if ui.button("Reset View\tR").clicked() {
+                        // Reset viewport
+                    }
+                    if ui.button("Toggle Depth Mode\tD").clicked() {
+                        // Toggle depth mode
+                    }
+                    ui.separator();
+                    if ui.button("Fullscreen\tF11").clicked() {
+                        // Toggle fullscreen
+                    }
+                });
+
+                // Help menu
+                ui.menu_button("❓ Help", |ui| {
+                    if ui.button("Documentation\tF1").clicked() {
+                        // Open docs
+                    }
+                    if ui.button("Check for Updates").clicked() {
+                        // Check updates
+                    }
+                    ui.separator();
+                    if ui.button("About StrataForge").clicked() {
+                        // Show about dialog
+                    }
+                });
+            });
+        });
+
+        // Settings Panel (modal dialog)
+        if self.show_settings {
+            egui::Window::new("⚙️ Settings")
+                .collapsible(false)
+                .resizable()
+                .default_size([600.0, 500.0])
+                .show(ctx, |ui| {
+                    if self.settings.ui(ui) {
+                        // Settings changed
+                    }
+                    
+                    if ui.button("Close").clicked() {
+                        self.show_settings = false;
+                    }
+                });
+        }
+
         // Top Ribbon - Modern toolbar
         egui::TopBottomPanel::top("top_ribbon").show(ctx, |ui| {
             ui.add_space(4.0);

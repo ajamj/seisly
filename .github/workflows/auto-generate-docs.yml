@@ -1,0 +1,52 @@
+name: Auto-Generate Documentation
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'crates/**'
+      - 'Cargo.toml'
+  workflow_dispatch:
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate API Documentation
+        run: |
+          cargo doc --workspace --no-deps --output-dir docs/api
+          
+      - name: Generate Features Summary
+        run: |
+          echo "# Auto-Generated Features" > docs/AUTO_GENERATED_FEATURES.md
+          echo "" >> docs/AUTO_GENERATED_FEATURES.md
+          echo "Generated on: $(date)" >> docs/AUTO_GENERATED_FEATURES.md
+          echo "" >> docs/AUTO_GENERATED_FEATURES.md
+          
+          for crate_dir in crates/sf_*; do
+            crate_name=$(basename "$crate_dir")
+            echo "## $crate_name" >> docs/AUTO_GENERATED_FEATURES.md
+            echo "" >> docs/AUTO_GENERATED_FEATURES.md
+            
+            if grep -q "description" "$crate_dir/Cargo.toml"; then
+              desc=$(grep "description" "$crate_dir/Cargo.toml" | cut -d'"' -f2)
+              echo "$desc" >> docs/AUTO_GENERATED_FEATURES.md
+            fi
+            echo "" >> docs/AUTO_GENERATED_FEATURES.md
+          done
+
+      - name: Commit and push generated docs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs(auto): auto-generate documentation from code"
+          file_pattern: 'docs/api/* docs/AUTO_GENERATED_FEATURES.md'
+          commit_user_name: GitHub Actions
+          commit_user_email: actions@github.com
