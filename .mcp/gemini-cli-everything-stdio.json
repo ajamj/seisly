@@ -1,0 +1,12 @@
+{
+  "mcp": {
+    "servers": {
+      "everything": {
+        "command": "uvx",
+        "args": [
+          "mcp-server-everything"
+        ]
+      }
+    }
+  }
+}
