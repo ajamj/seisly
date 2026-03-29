@@ -91,7 +91,7 @@ mod tests {
         let vertices = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
         let indices = vec![0, 1, 2];
         let mesh = Mesh::new(vertices, indices);
-        let crs = crate::Crs::Wgs84;
+        let crs = crate::Crs::wgs84();
         let surface = Surface::new("Top Reservoir".to_string(), crs, vec![mesh]);
 
         assert_eq!(surface.metadata.name, "Top Reservoir");
