@@ -22,7 +22,7 @@ fn test_synthetic_data_generation() {
     assert_eq!(horizons.dims(), &[50, 3]);
 
     // Verify data is not all zeros
-    let seismic_sum = seismic.sum::<candle_core::DType::F32>().unwrap();
+    let seismic_sum = seismic.sum(()).unwrap();
     assert!(seismic_sum.to_scalar::<f32>().unwrap().abs() > 0.0);
 }
 

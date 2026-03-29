@@ -97,9 +97,13 @@ impl Trainer {
 
         let mut optimizer = candle_nn::AdamW::new(
             self.varmap.all_vars(),
-            self.config.learning_rate,
-            (0.9, 0.999),
-            self.config.weight_decay,
+            candle_nn::ParamsAdamW {
+                lr: self.config.learning_rate,
+                beta1: 0.9,
+                beta2: 0.999,
+                eps: 1e-8,
+                weight_decay: self.config.weight_decay,
+            },
         )?;
 
         let num_samples = seismic_data.dims()[0];
