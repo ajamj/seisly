@@ -4,6 +4,7 @@ pub mod horizon_properties_panel;
 pub mod velocity_panel;
 pub mod viewport;
 pub mod well_panel;
+pub mod synthetic_data;
 
 // Re-exports for app.rs - allowed unused as they are public API
 #[allow(unused_imports)]
@@ -18,3 +19,5 @@ pub use velocity_panel::VelocityPanel;
 pub use viewport::ViewportWidget;
 #[allow(unused_imports)]
 pub use well_panel::WellPanel;
+#[allow(unused_imports)]
+pub use synthetic_data::SyntheticDataWidget;
