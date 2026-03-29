@@ -108,6 +108,7 @@ impl ProjectManager {
 
 // Conversion methods (to be implemented as needed)
 impl ProjectData {
+    #[allow(dead_code)]
     pub fn from_state(
         name: &str,
         interpretation: &crate::interpretation::InterpretationState,
