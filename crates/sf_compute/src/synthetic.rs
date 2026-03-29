@@ -212,7 +212,7 @@ impl SyntheticWellLog {
             // Add noise
             gr += rng.gen_range(-3.0..=3.0);
 
-            gr_values.push(gr.max(0.0).min(150.0));
+            gr_values.push(gr.clamp(0.0, 150.0));
         }
 
         (depths, gr_values)
@@ -251,7 +251,7 @@ impl SyntheticWellLog {
             // Add noise
             dt += rng.gen_range(-5.0..=5.0);
 
-            dt_values.push(dt.max(100.0).min(400.0));
+            dt_values.push(dt.clamp(100.0, 400.0));
         }
 
         (depths, dt_values)
@@ -290,7 +290,7 @@ impl SyntheticWellLog {
             // Add noise
             rhob += rng.gen_range(-0.05..=0.05);
 
-            rhob_values.push(rhob.max(1.5).min(3.0));
+            rhob_values.push(rhob.clamp(1.5, 3.0));
         }
 
         (depths, rhob_values)
