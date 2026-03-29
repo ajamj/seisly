@@ -36,10 +36,15 @@ pub struct StrataForgeApp {
     #[allow(dead_code)]
     name: String,
     viewport: ViewportWidget,
+    #[allow(dead_code)]
     crossplot: CrossPlotWidget,
+    #[allow(dead_code)]
     fault_properties: FaultPropertiesPanel,
+    #[allow(dead_code)]
     horizon_properties: HorizonPropertiesPanel,
+    #[allow(dead_code)]
     velocity_panel: VelocityPanel,
+    #[allow(dead_code)]
     well_panel: WellPanel,
     interpretation: InterpretationState,
     history: HistoryManager,
