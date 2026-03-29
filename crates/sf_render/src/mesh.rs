@@ -74,7 +74,6 @@ impl MeshRenderer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use sf_core::domain::surface::Mesh;
 
     #[test]

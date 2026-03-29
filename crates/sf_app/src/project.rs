@@ -1,7 +1,7 @@
 //! Project management for StrataForge
 
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Project data structure for serialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +107,7 @@ impl ProjectData {
         wells: &crate::interpretation::WellState,
     ) -> Self {
         let now = "2026-03-28T00:00:00Z";
-        let mut project = Self::create_new(name);
+        let mut project = ProjectManager::create_new(name);
         project.modified_at = now.to_string();
 
         // Snapshot interpretation
@@ -157,7 +157,6 @@ impl ProjectData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
     use tempfile::TempDir;
 
     #[test]
