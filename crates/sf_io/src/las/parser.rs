@@ -82,7 +82,6 @@ impl LasParser {
         let mut data_lines = Vec::new();
         let mut section = "OTHER";
         let mut null_value = -999.25f32;
-        let mut depth_unit = "M".to_string();
         let mut curve_defs: Vec<CurveDef> = Vec::new();
 
         for line in reader.lines() {
@@ -111,10 +110,6 @@ impl LasParser {
             if section == "WELL" {
                 if trimmed.starts_with(" WELL.") {
                     well_name = Self::extract_value(trimmed).unwrap_or_default();
-                } else if trimmed.starts_with(" STRT.") {
-                    if let Some(unit) = Self::extract_unit(trimmed) {
-                        depth_unit = unit;
-                    }
                 }
             }
 

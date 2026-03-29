@@ -14,6 +14,7 @@ pub enum TransformError {
 }
 
 /// Transformer between two CRS definitions
+#[allow(dead_code)]
 pub struct Transformer {
     source: Crs,
     target: Crs,
