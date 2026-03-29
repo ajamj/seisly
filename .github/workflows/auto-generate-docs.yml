@@ -60,3 +60,4 @@ jobs:
           file_pattern: 'docs/api/* docs/AUTO_GENERATED_FEATURES.md'
           commit_user_name: GitHub Actions
           commit_user_email: actions@github.com
+          push_options: '--force'

@@ -2,10 +2,10 @@
 
 **Rust-Powered Seismic Studio**
 
-[![CI/CD](https://github.com/ajamj/StrataForge/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ajamj/StrataForge/actions/workflows/ci-cd.yml)
+[![CI/CD](https://github.com/ajamj/seisly/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ajamj/seisly/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust Version](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://ajamj.github.io/StrataForge)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://ajamj.github.io/seisly)
 
 **Seisly** (pronounced: /ˈsaɪzli/) is a modern, open-source seismic interpretation platform built in Rust.
 
