@@ -219,23 +219,24 @@ git commit -m "feat(core): add FormationTop domain model
 
 ---
 
-## Task 2: Complete SEG-Y Reader Implementation
+## Task 2: Complete SEG-Y Reader Implementation (Hybrid Approach)
 
 **Files:**
 - Create: `crates/sf_io/src/segy/reader.rs`
 - Modify: `crates/sf_io/src/segy/mod.rs`
 - Test: `crates/sf_io/tests/segy_test.rs`
 
-**Note:** We'll use the `segy-rs` crate as a base and enhance it with our own extensions.
+**Design Decision:** Hybrid approach - `segy-rs` for header parsing + custom I/O with `memmap2`
 
-- [ ] **Step 1: Add segy-rs dependency**
+- [ ] **Step 1: Add dependencies**
 
 Modify `crates/sf_io/Cargo.toml`:
 
 ```toml
 [dependencies]
 # Add to existing dependencies
-segy-rs = "0.3"
+segy-rs = "0.3"     # Header parsing (EBCDIC, binary)
+memmap2 = "0.9"     # Memory-mapped file access
 ```
 
 - [ ] **Step 2: Write integration test first**
@@ -244,18 +245,17 @@ Create `crates/sf_io/tests/segy_test.rs`:
 
 ```rust
 use sf_io::segy::SegyReader;
+use tempfile::TempDir;
 use std::path::PathBuf;
 
 #[test]
 fn test_segy_reader_open_and_read() {
-    // Use test data
-    let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data/test.segy");
+    // Generate synthetic SEG-Y for testing
+    let temp_dir = TempDir::new().unwrap();
+    let test_file = temp_dir.path().join("test.segy");
     
-    if !test_file.exists() {
-        // Skip if test data not available
-        return;
-    }
+    // Create test file using SegyWriter (tested separately)
+    // ... setup code ...
 
     let reader = SegyReader::open(&test_file).unwrap();
     
@@ -263,19 +263,17 @@ fn test_segy_reader_open_and_read() {
     assert_eq!(reader.binary_header().sample_rate, 4000); // 4ms
     assert!(reader.binary_header().trace_count > 0);
     
-    // Read first trace
+    // Read first trace (zero-copy via mmap)
     let trace = reader.read_trace(0).unwrap();
     assert!(!trace.data.is_empty());
 }
 
 #[test]
 fn test_segy_reader_textual_header() {
-    let test_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data/test.segy");
+    let temp_dir = TempDir::new().unwrap();
+    let test_file = temp_dir.path().join("test.segy");
     
-    if !test_file.exists() {
-        return;
-    }
+    // Create test file...
 
     let reader = SegyReader::open(&test_file).unwrap();
     let textual = reader.textual_header();
@@ -294,9 +292,31 @@ cargo test --test segy_test
 
 Expected: FAIL with "unresolved import `SegyReader`"
 
-- [ ] **Step 4: Implement SegyReader**
+- [ ] **Step 4: Implement SegyReader (Hybrid)**
 
 Create `crates/sf_io/src/segy/reader.rs`:
+
+```rust
+//! SEG-Y file reader with memory-mapped access
+//!
+//! Hybrid approach:
+//! - segy-rs: Header parsing (EBCDIC decoding, binary header)
+//! - memmap2: Zero-copy trace data access
+//! - Custom: Optimized I/O layer
+
+use memmap2::Mmap;
+use segy_rs::{SegyFile, SegyTrace, BinaryHeader};
+use std::fs::File;
+use std::path::Path;
+
+use crate::error::IoError;
+
+/// SEG-Y volume reader
+pub struct SegyReader {
+    mmap: Mmap,
+    segy: SegyFile,
+}
+```
 
 ```rust
 //! SEG-Y file reader with memory-mapped access
@@ -806,11 +826,18 @@ git commit -m "feat(io): add LAS 3.0 parser support
 
 ---
 
-## Task 5: Well-Seismic Tie Module
+## Task 5: Well-Seismic Tie Module (Using Existing LinearVelocity)
 
 **Files:**
 - Create: `crates/sf_compute/src/well_tie.rs`
 - Test: `crates/sf_compute/tests/well_tie_test.rs`
+
+**Design Decision:** Reuse existing `LinearVelocity` model from `sf_compute::velocity` instead of creating new implementation.
+
+**Formula:** For linear velocity model v(z) = v0 + k*z:
+```
+TWT(depth) = (2/k) * ln((v0 + k*depth) / v0)
+```
 
 - [ ] **Step 1: Write the failing test**
 
@@ -821,14 +848,14 @@ use sf_compute::well_tie::{WellTieEngine, TieParameters};
 use sf_core::domain::{Well, WellLog};
 
 #[test]
-fn test_well_tie_creation() {
+fn test_well_tie_with_velocity_model() {
     // Create synthetic well
     let mut well = Well::new("Test Well".to_string(), 0.0, 0.0);
-    
+
     // Add GR log
     let depths: Vec<f64> = (0..100).map(|i| i as f64 * 10.0).collect();
     let gr_values: Vec<f64> = (0..100).map(|i| 50.0 + (i as f64 * 0.5)).collect();
-    
+
     well.add_log(WellLog {
         mnemonic: "GR".to_string(),
         unit: "GAPI".to_string(),
@@ -836,17 +863,18 @@ fn test_well_tie_creation() {
         values: gr_values,
     });
 
-    // Create tie engine
-    let engine = WellTieEngine::new();
-    let params = TieParameters {
-        datum_elevation: 0.0,
-        replacement_velocity: 2000.0,
-    };
+    // Create tie engine with V0 + kZ model
+    let engine = WellTieEngine::new(2000.0, 0.5); // v0=2000 m/s, k=0.5 1/s
+    let tie = engine.create_tie(&well).unwrap();
 
-    let tie = engine.create_tie(&well, params).unwrap();
-    
     assert_eq!(tie.well_id, well.id);
     assert!(!tie.time_depth_pairs.is_empty());
+    
+    // Verify accuracy: for v0=2000, k=0.5, depth=1000m:
+    // TWT = (2/0.5) * ln((2000 + 0.5*1000) / 2000) = 4 * ln(1.25) ≈ 892ms
+    let twt = tie.time_depth_pairs.iter()
+        .find(|p| p.depth_md == 1000.0).unwrap().twt;
+    assert!((twt - 892.0).abs() < 1.0);
 }
 ```
 
@@ -857,20 +885,22 @@ cd crates/sf_compute
 cargo test --test well_tie_test
 ```
 
-Expected: FAIL
+Expected: FAIL with "unresolved import `WellTieEngine`"
 
-- [ ] **Step 3: Implement WellTieEngine**
+- [ ] **Step 3: Implement WellTieEngine (reusing LinearVelocity)**
 
 Create `crates/sf_compute/src/well_tie.rs`:
 
 ```rust
 //! Well-seismic tie computation
 //!
-//! Converts well log depths to two-way time (TWT) using:
-//! - Replacement velocity (constant)
-//! - Time-depth relationship from checkshot/VSP
+//! Uses existing LinearVelocity model (V0 + kZ) from sf_compute::velocity
+//! for accurate time-depth conversion.
+//!
+//! Formula: TWT = (2/k) * ln((v0 + k*depth) / v0)
 
 use crate::error::ComputeError;
+use crate::velocity::LinearVelocity;
 use sf_core::domain::{Well, WellLog, FormationTop};
 use uuid::Uuid;
 
@@ -879,15 +909,18 @@ use uuid::Uuid;
 pub struct TieParameters {
     /// Datum elevation (meters)
     pub datum_elevation: f64,
-    /// Replacement velocity (m/s)
-    pub replacement_velocity: f64,
+    /// Surface velocity v0 (m/s)
+    pub v0: f64,
+    /// Velocity gradient k (1/s)
+    pub k: f64,
 }
 
 impl Default for TieParameters {
     fn default() -> Self {
         Self {
             datum_elevation: 0.0,
-            replacement_velocity: 2000.0, // Typical sedimentary rock
+            v0: 2000.0, // Typical sedimentary rock
+            k: 0.5,     // Moderate compaction
         }
     }
 }
@@ -908,21 +941,21 @@ pub struct WellTie {
     pub parameters: TieParameters,
 }
 
-/// Well tie computation engine
-pub struct WellTieEngine;
+/// Well tie computation engine using LinearVelocity model
+pub struct WellTieEngine {
+    velocity: LinearVelocity,
+}
 
 impl WellTieEngine {
-    /// Create a new well tie engine
-    pub fn new() -> Self {
-        Self
+    /// Create a new well tie engine with V0 + kZ velocity model
+    pub fn new(v0: f64, k: f64) -> Self {
+        Self {
+            velocity: LinearVelocity::new(v0, k),
+        }
     }
 
-    /// Create well-seismic tie using replacement velocity
-    pub fn create_tie(
-        &self,
-        well: &Well,
-        params: TieParameters,
-    ) -> Result<WellTie, ComputeError> {
+    /// Create well-seismic tie using V0 + kZ model
+    pub fn create_tie(&self, well: &Well) -> Result<WellTie, ComputeError> {
         // Get first log for depth range
         let first_log = well
             .logs
@@ -932,14 +965,16 @@ impl WellTieEngine {
         let min_depth = *first_log.depths.first().unwrap_or(&0.0);
         let max_depth = *first_log.depths.last().unwrap_or(&1000.0);
 
-        // Generate time-depth pairs
+        // Generate time-depth pairs using LinearVelocity
         let mut pairs = Vec::new();
         let step = 10.0; // 10m intervals
 
         let mut depth = min_depth;
         while depth <= max_depth {
-            // TWT = 2 * depth / velocity (in ms)
-            let twt = 2.0 * (depth - params.datum_elevation) / params.replacement_velocity * 1000.0;
+            // TWT = (2/k) * ln((v0 + k*depth) / v0) * 1000 (convert to ms)
+            let v0 = self.velocity.v0();
+            let k = self.velocity.k();
+            let twt = (2.0 / k) * ((v0 + k * depth) / v0).ln() * 1000.0;
             
             pairs.push(TimeDepthPair {
                 depth_md: depth,
@@ -953,24 +988,23 @@ impl WellTieEngine {
             id: Uuid::new_v4(),
             well_id: well.id,
             time_depth_pairs: pairs,
-            parameters: params,
+            parameters: TieParameters {
+                datum_elevation: 0.0,
+                v0,
+                k,
+            },
         })
     }
 
-    /// Convert depth to TWT
-    pub fn depth_to_twt(depth: f64, params: &TieParameters) -> f64 {
-        2.0 * (depth - params.datum_elevation) / params.replacement_velocity * 1000.0
+    /// Convert depth to TWT using V0 + kZ model
+    pub fn depth_to_twt(depth: f64, v0: f64, k: f64) -> f64 {
+        (2.0 / k) * ((v0 + k * depth) / v0).ln() * 1000.0
     }
 
-    /// Convert TWT to depth
-    pub fn twt_to_depth(twt: f64, params: &TieParameters) -> f64 {
-        (twt * params.replacement_velocity / 1000.0) / 2.0 + params.datum_elevation
-    }
-}
-
-impl Default for WellTieEngine {
-    fn default() -> Self {
-        Self::new()
+    /// Convert TWT to depth (inverse formula)
+    pub fn twt_to_depth(twt: f64, v0: f64, k: f64) -> f64 {
+        let twt_sec = twt / 1000.0; // Convert ms to seconds
+        (v0 * ((k * twt_sec / 2.0).exp() - 1.0)) / k
     }
 }
 
@@ -980,18 +1014,14 @@ mod tests {
 
     #[test]
     fn test_depth_time_conversion() {
-        let params = TieParameters {
-            datum_elevation: 0.0,
-            replacement_velocity: 2000.0,
-        };
-
-        // 1000m depth should give 1000ms TWT
-        let twt = WellTieEngine::depth_to_twt(1000.0, &params);
-        assert!((twt - 1000.0).abs() < 0.01);
+        // For v0=2000, k=0.5, depth=1000m:
+        // TWT = (2/0.5) * ln((2000 + 0.5*1000) / 2000) * 1000 = 892ms
+        let twt = WellTieEngine::depth_to_twt(1000.0, 2000.0, 0.5);
+        assert!((twt - 892.0).abs() < 1.0);
 
         // Back conversion
-        let depth = WellTieEngine::twt_to_depth(1000.0, &params);
-        assert!((depth - 1000.0).abs() < 0.01);
+        let depth = WellTieEngine::twt_to_depth(twt, 2000.0, 0.5);
+        assert!((depth - 1000.0).abs() < 1.0);
     }
 }
 ```
@@ -1000,12 +1030,12 @@ mod tests {
 
 ```bash
 git add crates/sf_compute/src/well_tie.rs
-git commit -m "feat(compute): add well-seismic tie engine
+git commit -m "feat(compute): add well-seismic tie engine with V0 + kZ model
 
-- WellTieEngine with replacement velocity method
-- Time-depth pair generation
+- WellTieEngine reusing existing LinearVelocity
+- Accurate time-depth conversion formula
 - Bidirectional depth<->TWT conversion
-- Unit tests for conversion accuracy"
+- Unit tests for formula accuracy"
 ```
 
 ---
