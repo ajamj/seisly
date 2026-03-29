@@ -9,5 +9,6 @@ pub mod domain;
 pub mod types;
 
 pub use crs::Crs;
-pub use domain::{log, surface, trajectory, well};
+pub use domain::{formation_top, log, surface, trajectory, well};
+pub use domain::{FormationTop, Log, Surface, Trajectory, Well};
 pub use types::{DatasetMetadata, EntityId, Provenance};

@@ -9,6 +9,8 @@ thiserror.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
 memmap2 = "0.9"
+giga-segy-in.workspace = true
+giga-segy-out.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

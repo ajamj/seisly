@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "servers": {
+      "everything": {
+        "command": "mcp-server-everything",
+        "args": []
+      },
+      "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/",
+        "headers": {
+          "Authorization": "Bearer YOUR_GITHUB_TOKEN_HERE"
+        }
+      }
+    }
+  }
+}

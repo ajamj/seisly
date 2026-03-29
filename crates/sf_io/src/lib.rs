@@ -11,4 +11,5 @@ pub mod xyz;
 pub use csv::trajectory::TrajectoryParser;
 pub use las::parser::LasParser;
 pub use segy::parser::parse_metadata;
+pub use segy::reader::{IoError, SegyReader};
 pub use xyz::surface::SurfaceParser;

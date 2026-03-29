@@ -1,0 +1,27 @@
+[package]
+name = "sf_ml"
+version.workspace = true
+edition.workspace = true
+description = "Machine learning for seismic interpretation"
+
+[dependencies]
+sf_core.workspace = true
+sf_compute.workspace = true
+
+# ML frameworks
+candle-core.workspace = true
+candle-nn.workspace = true
+
+# Numerical
+ndarray.workspace = true
+
+# Random
+rand.workspace = true
+rand_distr.workspace = true
+
+# Half precision
+half.workspace = true
+
+# Utilities
+thiserror.workspace = true
+serde.workspace = true

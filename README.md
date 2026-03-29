@@ -1,18 +1,28 @@
 # StrataForge
 
-**Open-source subsurface interpretation and modeling platform**
+**Rust-powered Seismic Studio – Lightning fast, fully open, no license hell.**
 
 [![CI/CD](https://github.com/ajamj/StrataForge/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ajamj/StrataForge/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust Version](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
+[![Contributors Welcome](https://img.shields.io/badge/contributors-welcome-brightgreen.svg)](docs/blueprint.md)
 
 StrataForge is a modern, reproducible platform for geoscientists and engineers to analyze subsurface data from exploration to production.
 
+> **🎯 Vision:** Building an open-source competitor to Petrel, DUG Insight, and OpendTect Pro. See our [Strategic Blueprint 2026-2028](docs/blueprint.md) for the roadmap to **StrataForge Pro**.
+
 ## 🚀 Quick Stats
 
-- **Status:** v0.1.1 Beta - Production Ready ✅
+| Metric | StrataForge | Petrel | OpendTect |
+|--------|-------------|--------|-----------|
+| **Install Size** | <500MB | ~5GB | ~2GB |
+| **Startup Time** | <5s | 30-60s | 10-20s |
+| **License** | MIT (Free) | $10k+/yr | Open-core |
+| **Architecture** | Rust + GPU | .NET | C++ |
+
+- **Status:** v0.1.1 Beta → **v0.2.0 in development** 🚧
 - **Platform:** Windows, Linux, macOS
-- **License:** MIT
+- **License:** MIT (Free for academic & commercial use)
 - **Language:** Rust
 
 ## ✨ Features
@@ -24,7 +34,9 @@ StrataForge is a modern, reproducible platform for geoscientists and engineers t
 - ✅ **Velocity Modeling** - Linear velocity model (V0 + kZ)
 - ✅ **Time-Depth Conversion** - Real-time depth domain visualization
 - ✅ **Synthetic Data Generation** - Generate test data for training/demo
-- ✅ **Well Data Support** - LAS 2.0 import/export (coming soon)
+- ✅ **Well Data Support** - LAS 2.0/3.0 import, well-seismic tie **(NEW v0.2)** 🚧
+- ✅ **Formation Tops** - Stratigraphic marker management **(NEW v0.2)** 🚧
+- ✅ **Full SEG-Y Support** - Reader/writer with textual/binary headers **(NEW v0.2)** 🚧
 - ✅ **Modern UI** - Light/Dark themes, intuitive workflow
 
 ### Technical Features
@@ -33,6 +45,7 @@ StrataForge is a modern, reproducible platform for geoscientists and engineers t
 - ✅ **SQLite Storage** - Persistent project metadata
 - ✅ **Blob Storage** - Efficient large data management
 - ✅ **CRS Support** - Coordinate reference system transformations
+- ✅ **Plugin System** - Rust + Python plugins **(Coming v0.3)**
 
 ## 📦 Installation
 
