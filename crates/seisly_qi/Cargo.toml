@@ -7,6 +7,6 @@ description = "Quantitative Interpretation & AVO Analysis for StrataForge"
 [dependencies]
 seisly_core.workspace = true
 seisly_compute.workspace = true
-sf_attributes.workspace = true
+seisly_attributes.workspace = true
 nalgebra.workspace = true
 rayon = "1.8"
