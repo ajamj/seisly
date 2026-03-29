@@ -1,18 +1,18 @@
 [package]
-name = "sf_app"
+name = "seisly_app"
 version.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "sf-app"
+name = "seisly-app"
 path = "src/main.rs"
 
 [dependencies]
-sf_core.workspace = true
-sf_storage.workspace = true
-sf_io.workspace = true
-sf_compute.workspace = true
-sf_render.workspace = true
+seisly_core.workspace = true
+seisly_storage.workspace = true
+seisly_io.workspace = true
+seisly_compute.workspace = true
+seisly_render.workspace = true
 eframe = { workspace = true, features = ["wgpu"] }
 egui = { workspace = true, features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["svg", "all_loaders"] }

@@ -1,5 +1,4 @@
 [package]
-name = "sf_core"
 version.workspace = true
 edition.workspace = true
 

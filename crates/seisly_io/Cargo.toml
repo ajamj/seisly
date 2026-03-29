@@ -1,10 +1,10 @@
 [package]
-name = "sf_io"
+name = "seisly_io"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-sf_core.workspace = true
+seisly_core.workspace = true
 thiserror.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
