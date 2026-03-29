@@ -61,7 +61,7 @@ impl SegyReader {
 
         // Extract trace data as f32
         let data = self.segy
-            .get_trace_data_as_f32_from_trace(&trace)
+            .get_trace_data_as_f32_from_trace(trace)
             .map_err(|e| IoError::ParseError(format!("Failed to read trace data: {}", e)))?;
 
         Ok(data)
