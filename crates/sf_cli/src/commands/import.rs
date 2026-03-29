@@ -12,14 +12,14 @@ pub fn execute(project_path: String, import_type: ImportType) -> anyhow::Result<
     match import_type {
         ImportType::Las { file, well } => {
             println!("Importing LAS file '{}' for well '{}'", file, well);
-            let log = LasParser::parse(&PathBuf::from(file))?;
-            println!("✓ Imported {} curves", log.curves.len());
-            for curve in &log.curves {
+            let well = LasParser::read(&PathBuf::from(file))?;
+            println!("✓ Imported {} logs", well.logs.len());
+            for log in &well.logs {
                 println!(
                     "  - {}: {} values [{}]",
-                    curve.mnemonic,
-                    curve.values.len(),
-                    curve.unit
+                    log.mnemonic,
+                    log.data.len(),
+                    log.units
                 );
             }
         }
