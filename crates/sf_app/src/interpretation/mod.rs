@@ -166,6 +166,7 @@ impl Fault {
     }
 
     /// Update the fault color (RGBA)
+    #[allow(dead_code)]
     pub fn set_color(&mut self, color: [f32; 4]) {
         self.color = color;
     }
@@ -177,6 +178,7 @@ impl Fault {
     }
 
     /// Update fault name
+    #[allow(dead_code)]
     pub fn set_name(&mut self, name: String) {
         self.name = name;
     }

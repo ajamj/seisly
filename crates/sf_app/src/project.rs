@@ -96,6 +96,7 @@ impl ProjectManager {
     }
 
     /// Get project file extension
+    #[allow(dead_code)]
     pub const EXTENSION: &'static str = "sfp"; // StrataForge Project
 }
 
