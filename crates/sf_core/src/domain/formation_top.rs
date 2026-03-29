@@ -9,7 +9,7 @@ use uuid::Uuid;
 pub type FormationTopId = Uuid;
 
 /// A formation top (marker) picked on a well
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FormationTop {
     /// Unique identifier
     pub id: FormationTopId,
@@ -83,5 +83,46 @@ mod tests {
         let json = serde_json::to_string(&top).unwrap();
         assert!(json.contains("Top Seal"));
         assert!(json.contains("1800.5"));
+    }
+
+    #[test]
+    fn test_with_comments_builder() {
+        let well_id = Uuid::new_v4();
+        let top = FormationTop::new(
+            well_id,
+            "Top Reservoir".to_string(),
+            2500.0,
+            None,
+        )
+        .with_comments("Test comment".to_string());
+
+        assert_eq!(top.comments, Some("Test comment".to_string()));
+    }
+
+    #[test]
+    fn test_formation_top_equality() {
+        let well_id = Uuid::new_v4();
+        let top1 = FormationTop::new(
+            well_id,
+            "Top Reservoir".to_string(),
+            2500.0,
+            Some("Formation A".to_string()),
+        );
+
+        let top2 = FormationTop::new(
+            well_id,
+            "Top Reservoir".to_string(),
+            2500.0,
+            Some("Formation A".to_string()),
+        );
+
+        // IDs will be different (UUIDs are unique)
+        assert_ne!(top1.id, top2.id);
+        
+        // But we can manually compare other fields
+        assert_eq!(top1.well_id, top2.well_id);
+        assert_eq!(top1.name, top2.name);
+        assert_eq!(top1.depth_md, top2.depth_md);
+        assert_eq!(top1.formation, top2.formation);
     }
 }
