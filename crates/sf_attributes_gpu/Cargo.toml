@@ -1,0 +1,21 @@
+[package]
+name = "sf_attributes_gpu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GPU-accelerated seismic attribute computation using wgpu"
+
+[dependencies]
+wgpu.workspace = true
+thiserror.workspace = true
+sf_attributes = { workspace = true }
+bytemuck = { version = "1.14", features = ["derive"] }
+
+[dev-dependencies]
+tokio.workspace = true
+criterion = "0.5"
+
+[[bench]]
+name = "gpu_benchmark"
+harness = false

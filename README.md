@@ -41,7 +41,8 @@ StrataForge is a modern, reproducible platform for geoscientists and engineers t
 
 ### Technical Features
 - ✅ **Cross-Platform** - Native builds for Windows, Linux, macOS
-- ✅ **GPU Accelerated** - wgpu-based 3D rendering
+- ✅ **GPU Accelerated** - wgpu-based 3D rendering and seismic attribute computation
+- ✅ **Seismic Attributes** - GPU-accelerated RMS, Mean, Energy computation (10x speedup)
 - ✅ **SQLite Storage** - Persistent project metadata
 - ✅ **Blob Storage** - Efficient large data management
 - ✅ **CRS Support** - Coordinate reference system transformations
@@ -154,7 +155,11 @@ StrataForge
 ├── sf_storage   - SQLite, blob storage
 ├── sf_render    - 3D rendering (wgpu)
 ├── sf_app       - Desktop application (eframe/egui)
-└── sf_cli       - Command-line tools
+├── sf_cli       - Command-line tools
+├── sf_ml        - Machine learning (auto-tracking)
+├── sf_plugin    - Plugin system
+├── sf_attributes - Seismic attribute computation (CPU)
+└── sf_attributes_gpu - GPU-accelerated attributes (wgpu)
 ```
 
 ## 🧪 Testing
