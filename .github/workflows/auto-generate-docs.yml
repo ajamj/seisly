@@ -22,7 +22,17 @@ jobs:
 
       - name: Generate API Documentation
         run: |
-          cargo doc --workspace --no-deps --output-dir docs/api
+          # Generate docs to target/doc
+          cargo doc --workspace --no-deps
+          
+          # Copy to docs/api
+          mkdir -p docs/api
+          cp -r target/doc/* docs/api/
+          
+          # Create index page
+          echo "# Seisly API Documentation" > docs/api/README.md
+          echo "" >> docs/api/README.md
+          echo "Auto-generated Rust API documentation for all Seisly crates." >> docs/api/README.md
           
       - name: Generate Features Summary
         run: |
@@ -30,12 +40,12 @@ jobs:
           echo "" >> docs/AUTO_GENERATED_FEATURES.md
           echo "Generated on: $(date)" >> docs/AUTO_GENERATED_FEATURES.md
           echo "" >> docs/AUTO_GENERATED_FEATURES.md
-          
-          for crate_dir in crates/sf_*; do
+
+          for crate_dir in crates/seisly_*; do
             crate_name=$(basename "$crate_dir")
             echo "## $crate_name" >> docs/AUTO_GENERATED_FEATURES.md
             echo "" >> docs/AUTO_GENERATED_FEATURES.md
-            
+
             if grep -q "description" "$crate_dir/Cargo.toml"; then
               desc=$(grep "description" "$crate_dir/Cargo.toml" | cut -d'"' -f2)
               echo "$desc" >> docs/AUTO_GENERATED_FEATURES.md
