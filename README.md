@@ -1,29 +1,29 @@
-# StrataForge
+# Seisly
 
-**Rust-powered Seismic Studio – Lightning fast, fully open, no license hell.**
+**Rust-Powered Seismic Studio**
 
 [![CI/CD](https://github.com/ajamj/StrataForge/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/ajamj/StrataForge/actions/workflows/ci-cd.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust Version](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
-[![Contributors Welcome](https://img.shields.io/badge/contributors-welcome-brightgreen.svg)](docs/blueprint.md)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://ajamj.github.io/StrataForge)
 
-StrataForge is a modern, reproducible platform for geoscientists and engineers to analyze subsurface data from exploration to production.
+**Seisly** (pronounced: /ˈsaɪzli/) is a modern, open-source seismic interpretation platform built in Rust.
 
-> **🎯 Vision:** Building an open-source competitor to Petrel, DUG Insight, and OpendTect Pro. See our [Strategic Blueprint 2026-2028](docs/blueprint.md) for the roadmap to **StrataForge Pro**.
+> **🎯 Vision:** The fastest, most accessible seismic studio - from exploration to production.
 
-## 🚀 Quick Stats
+---
 
-| Metric | StrataForge | Petrel | OpendTect |
-|--------|-------------|--------|-----------|
-| **Install Size** | <500MB | ~5GB | ~2GB |
-| **Startup Time** | <5s | 30-60s | 10-20s |
+## ⚡ Quick Stats
+
+| Metric | Seisly | Petrel | OpendTect |
+|--------|--------|--------|-----------|
+| **Startup** | <2s | 30-60s | 10-20s |
+| **Size** | <100MB | ~5GB | ~2GB |
 | **License** | MIT (Free) | $10k+/yr | Open-core |
-| **Architecture** | Rust + GPU | .NET | C++ |
+| **Engine** | Rust + GPU | .NET | C++ |
 
-- **Status:** v0.5.0 Latest Release 🎉
+- **Version:** v0.5.0 (Latest)
 - **Platform:** Windows, Linux, macOS
-- **License:** MIT (Free for academic & commercial use)
 - **Language:** Rust
 
 ## 📚 Documentation

@@ -1,24 +1,25 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/sf_core",
-  "crates/sf_crs",
-  "crates/sf_storage",
-  "crates/sf_io",
-  "crates/sf_compute",
-  "crates/sf_render",
-  "crates/sf_cli",
-  "crates/sf_app",
-  "crates/sf_ml",
-  "crates/sf_plugin",
-  "crates/sf_attributes",
-  "crates/sf_attributes_gpu",
-  "crates/sf_qi",
-  "crates/sf_4d",
-  "crates/sf_ml_deep",
-  "crates/sf_fwi",
-  "crates/sf_tracking",
-  "crates/sf_production",
+  "crates/seisly_core",
+  "crates/seisly_crs",
+  "crates/seisly_storage",
+  "crates/seisly_io",
+  "crates/seisly_compute",
+  "crates/seisly_render",
+  "crates/seisly_cli",
+  "crates/seisly_app",
+  "crates/seisly_ml",
+  "crates/seisly_plugin",
+  "crates/seisly_attributes",
+  "crates/seisly_attributes_gpu",
+  "crates/seisly_qi",
+  "crates/seisly_4d",
+  "crates/seisly_ml_deep",
+  "crates/seisly_fwi",
+  "crates/seisly_tracking",
+  "crates/seisly_production",
+  "crates/seisly_ai",
 ]
 
 [workspace.package]
@@ -28,25 +29,26 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/ajamj/StrataForge"
 
 [workspace.dependencies]
-# StrataForge Workspace Members
-sf_core = { path = "crates/sf_core" }
-sf_crs = { path = "crates/sf_crs" }
-sf_storage = { path = "crates/sf_storage" }
-sf_io = { path = "crates/sf_io" }
-sf_compute = { path = "crates/sf_compute" }
-sf_render = { path = "crates/sf_render" }
-sf_cli = { path = "crates/sf_cli" }
-sf_app = { path = "crates/sf_app" }
-sf_ml = { path = "crates/sf_ml" }
-sf_plugin = { path = "crates/sf_plugin" }
-sf_attributes = { path = "crates/sf_attributes" }
-sf_attributes_gpu = { path = "crates/sf_attributes_gpu" }
-sf_qi = { path = "crates/sf_qi" }
-sf_4d = { path = "crates/sf_4d" }
-sf_ml_deep = { path = "crates/sf_ml_deep" }
-sf_fwi = { path = "crates/sf_fwi" }
-sf_tracking = { path = "crates/sf_tracking" }
-sf_production = { path = "crates/sf_production" }
+# Seisly Workspace Members
+seisly_core = { path = "crates/seisly_core" }
+seisly_crs = { path = "crates/seisly_crs" }
+seisly_storage = { path = "crates/seisly_storage" }
+seisly_io = { path = "crates/seisly_io" }
+seisly_compute = { path = "crates/seisly_compute" }
+seisly_render = { path = "crates/seisly_render" }
+seisly_cli = { path = "crates/seisly_cli" }
+seisly_app = { path = "crates/seisly_app" }
+seisly_ml = { path = "crates/seisly_ml" }
+seisly_plugin = { path = "crates/seisly_plugin" }
+seisly_attributes = { path = "crates/seisly_attributes" }
+seisly_attributes_gpu = { path = "crates/seisly_attributes_gpu" }
+seisly_qi = { path = "crates/seisly_qi" }
+seisly_4d = { path = "crates/seisly_4d" }
+seisly_ml_deep = { path = "crates/seisly_ml_deep" }
+seisly_fwi = { path = "crates/seisly_fwi" }
+seisly_tracking = { path = "crates/seisly_tracking" }
+seisly_production = { path = "crates/seisly_production" }
+seisly_ai = { path = "crates/seisly_ai" }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
