@@ -1,11 +1,13 @@
 # Jekyll Configuration for Seisly
 title: Seisly
 tagline: Rust-Powered Seismic Studio
-description: The fastest, most accessible seismic interpretation platform - from exploration to production
+description: The fastest, most accessible seismic interpretation platform
+
+# Base URL for GitHub Pages
 baseurl: ""
 url: "https://ajamj.github.io/seisly"
 
-# Theme - Just the Docs (perfect for documentation)
+# Theme
 theme: just-the-docs
 
 # Build settings
@@ -13,53 +15,13 @@ markdown: kramdown
 highlighter: rouge
 permalink: pretty
 
-# Enable search
+# Search
 search_enabled: true
-
-# Aux links (top right)
-aux_links:
-  "View on GitHub":
-    - "https://github.com/ajamj/seisly"
-  "Quick Start":
-    - "/QUICKSTART.md"
-
-# Footer content
-footer_content: "Copyright &copy; 2026 Seisly Contributors. MIT OR Apache-2.0 Licensed."
 
 # Color scheme
 color_scheme: blue
 
-# Mermaid diagrams support
-mermaid:
-  version: "9.1.3"
-
-# Callouts
-callouts:
-  note:
-    title: Note
-    color: blue
-  warning:
-    title: Warning
-    color: red
-  tip:
-    title: Tip
-    color: green
-
-# Navigation order
-nav_sort: case_sensitive
-
-# Exclude from build
-exclude:
-  - README.md
-  - Gemfile
-  - Gemfile.lock
-  - scripts/
-  - target/
-  - crates/
-  - benches/
-  - tests/
-  - python/
-  - "*.toml"
-  - "*.rs"
-  - "*.py"
-  - "*.sh"
+# Aux links
+aux_links:
+  "GitHub":
+    - "https://github.com/ajamj/seisly"
