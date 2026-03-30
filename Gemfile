@@ -2,13 +2,13 @@
 
 source "https://rubygems.org"
 
-# Jekyll theme for documentation
-gem "just-the-docs"
+# Just the Docs theme - perfect for documentation
+gem "just-the-docs", "~> 0.9"
 
-# GitHub Pages compatible Jekyll
-gem "github-pages", group: :jekyll
+# Jekyll
+gem "jekyll", "~> 4.3"
 
 # Jekyll plugins
-gem "jekyll", "~> 4.3"
 gem "kramdown", "~> 2.4"
 gem "rouge", "~> 4.2"
+gem "jekyll-seo-tag", "~> 2.8"

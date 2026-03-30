@@ -6,7 +6,7 @@ baseurl: ""
 url: "https://ajamj.github.io/seisly"
 
 # Theme - Just the Docs (perfect for documentation)
-remote_theme: just-the-docs/just-the-docs
+theme: just-the-docs
 
 # Build settings
 markdown: kramdown
