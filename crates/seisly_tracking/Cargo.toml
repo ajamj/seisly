@@ -7,7 +7,7 @@ description = "Enhanced Auto-Tracking for StrataForge"
 [dependencies]
 seisly_core.workspace = true
 seisly_compute.workspace = true
-sf_ml.workspace = true
-sf_ml_deep.workspace = true
+seisly_ml.workspace = true
+seisly_ml_deep.workspace = true
 nalgebra.workspace = true
 rayon = "1.8"

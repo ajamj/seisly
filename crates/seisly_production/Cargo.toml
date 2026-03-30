@@ -8,6 +8,6 @@ description = "Production Tools for StrataForge - Well Planning, CCUS Monitoring
 seisly_core.workspace = true
 seisly_compute.workspace = true
 seisly_io.workspace = true
-sf_qi.workspace = true
+seisly_qi.workspace = true
 nalgebra.workspace = true
 ndarray = "0.15"

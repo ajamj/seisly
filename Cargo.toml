@@ -19,7 +19,7 @@ members = [
   "crates/seisly_fwi",
   "crates/seisly_tracking",
   "crates/seisly_production",
-  "crates/seisly_ai",
+  # Note: seisly_ai is Python-only (AI server), not a Rust crate
 ]
 
 [workspace.package]

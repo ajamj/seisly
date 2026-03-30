@@ -8,7 +8,7 @@ echo "🚀 Generating documentation from code..."
 
 # Generate Rust API documentation
 echo "📚 Generating Rust API docs..."
-cargo doc --workspace --no-deps --output-dir docs/api
+cargo doc --workspace --no-deps --target-dir docs/api
 
 # Generate markdown summary
 echo "📝 Generating feature summary..."

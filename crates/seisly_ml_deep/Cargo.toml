@@ -7,7 +7,7 @@ description = "Deep Learning for StrataForge - U-Net Auto-Tracking"
 [dependencies]
 seisly_core.workspace = true
 seisly_compute.workspace = true
-sf_ml.workspace = true
+seisly_ml.workspace = true
 candle-core.workspace = true
 candle-nn.workspace = true
 candle-transformers = "0.3"
