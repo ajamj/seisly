@@ -21,7 +21,7 @@ seisly_storage.workspace = true
 seisly_io.workspace = true
 seisly_compute.workspace = true
 seisly_render.workspace = true
-seisly_plugin = { workspace = true, features = ["python"] }
+seisly_plugin = { workspace = true }
 eframe = { workspace = true, features = ["wgpu"] }
 egui = { workspace = true, features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["svg", "all_loaders"] }
@@ -39,7 +39,7 @@ sentry = { version = "0.34", default-features = false, features = ["backtrace", 
 rfd = "0.15"
 
 [features]
-python = ["seisly_plugin/python"]
+# No default features
 
 [build-dependencies]
 tonic-build.workspace = true
