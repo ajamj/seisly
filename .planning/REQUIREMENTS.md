@@ -43,3 +43,10 @@
 - [x] R8.1: Performance optimization (GPU acceleration)
 - [x] R8.2: User documentation and tutorials
 - [x] R8.3: Release packaging and distribution
+
+## Phase 9: Architectural Hardening (v1.1 - Completed)
+- [x] HARD-01: High-Performance IPC (Shared Memory for large arrays)
+- [x] HARD-02: Worker Resource Hardening (heartbeat watchdog, memory monitoring)
+- [x] HARD-03: Data Safety (SIGBUS protection via SafeMmap)
+- [x] HARD-04: Interpretive Integrity (Undo/Redo with Command pattern)
+- [x] HARD-05: Visual Hardening (Area-weighted normals for smooth shading)

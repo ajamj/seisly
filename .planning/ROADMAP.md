@@ -10,21 +10,29 @@
 | v05-phase-b | Velocity & Depth Modeling | ✅ Complete | 2026-03-28 | 2026-03-28 |
 | v06 | Advanced Features (ML, Wells) | ✅ Complete | 2026-03-30 | 2026-03-31 |
 | v1.0 | Production Release | ✅ Complete | 2026-03-31 | 2026-03-31 |
-| v1.1 | Architectural Hardening | 🔄 In Progress | 2026-04-01 | [To be planned] |
+| v1.1 | Architectural Hardening | ✅ Complete | 2026-04-01 | 2026-04-01 |
 
-## Current Phase: v1.1-hardening
+## Current Phase: v1.2 (Next)
 
-**Goal:** Address critical architectural gaps from v1.0 reviews.
+**Goal:** [To be planned]
 
-**Requirements:** HARD-01, HARD-02, HARD-03, HARD-04, HARD-05
+**Requirements:** [To be defined]
 
-**Plans:** 6 plans
-- [ ] v1.1-01-PLAN.md — Shared Memory IPC Foundation
-- [ ] v1.1-02-PLAN.md — IPC Migration & Handshake
-- [ ] v1.1-03-PLAN.md — Worker Resource Hardening
-- [ ] v1.1-04-PLAN.md — Data Safety (SIGBUS Protection)
-- [ ] v1.1-05-PLAN.md — Interpretive Integrity (Undo/Redo)
-- [ ] v1.1-06-PLAN.md — Visual Hardening (Smooth Normals)
+**Plans:** [To be planned]
+
+---
+
+## Completed Phases
+
+**v1.1-hardening** - ✅ Complete (2026-04-01)
+- High-performance Shared Memory IPC for large seismic arrays
+- Worker resource hardening with heartbeat watchdog
+- SIGBUS protection via SafeMmap wrapper
+- Undo/Redo infrastructure for interpretation operations
+- Area-weighted normal computation for smooth shading
+- All 5 HARD requirements satisfied (100/100 health score)
+
+**v1.0-production-release** - ✅ Complete
 
 ---
 
