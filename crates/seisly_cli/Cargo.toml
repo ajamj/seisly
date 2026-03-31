@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 repository.workspace = true
 authors.workspace = true
+description = "Seisly CLI - Command-line interface for seismic project management and data processing"
 
 [package.metadata.wix]
 upgrade-guid = "6B2394D1-E17A-4769-A157-264BE025C860"

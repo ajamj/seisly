@@ -69,6 +69,7 @@
 
         <Package Id='*'
             Keywords='Installer'
+            Description='Seisly CLI - Command-line interface for seismic project management and data processing'
             Manufacturer='Seisly Team'
             InstallerVersion='450'
             Languages='1033'

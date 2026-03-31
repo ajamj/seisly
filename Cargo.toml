@@ -29,6 +29,7 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Seisly Team <team@seisly.io>"]
 repository = "https://github.com/ajamj/seisly"
+description = "Seisly - Professional open-source seismic interpretation platform for geoscientists, powered by Rust"
 
 [workspace.dependencies]
 # Seisly Workspace Members

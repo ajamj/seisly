@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 repository.workspace = true
 authors.workspace = true
+description = "Seisly Desktop - High-performance 3D seismic interpretation workstation with interactive visualization"
 
 [package.metadata.wix]
 upgrade-guid = "9867F5A6-B15B-4598-89D4-7061DA0A6A5E"

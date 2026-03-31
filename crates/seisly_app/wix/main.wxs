@@ -69,6 +69,7 @@
 
         <Package Id='*'
             Keywords='Installer'
+            Description='Seisly Desktop - High-performance 3D seismic interpretation workstation with interactive visualization'
             Manufacturer='Seisly Team'
             InstallerVersion='450'
             Languages='1033'
