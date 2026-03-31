@@ -5,6 +5,8 @@ use std::io::{self, BufRead, Write};
 use numpy::PyArrayDyn;
 use ndarray::ArrayViewD;
 
+pub mod shm;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Request {
     id: u64,
@@ -95,6 +97,19 @@ fn handle_request(req: Request) -> Response {
             }
             "ping" => {
                 Ok(serde_json::Value::String("pong".to_string()))
+            }
+            "load_shm" => {
+                // Params: { "shm_id": "...", "shape": [...], "dtype": "..." }
+                let shm_id = req.params["shm_id"].as_str().ok_or("Missing shm_id")?;
+                let shape: Vec<usize> = req.params["shape"].as_array().ok_or("Missing shape")?
+                    .iter().map(|v| v.as_u64().unwrap_or(0) as usize).collect();
+                let dtype = req.params["dtype"].as_str().unwrap_or("f32");
+
+                let array = shm::map_shm_to_numpy(py, shm_id, shape, dtype).map_err(|e| e.to_string())?;
+                
+                // For verification, return some stats
+                let sum = array.call_method0("sum").map_err(|e| e.to_string())?;
+                python_to_json(sum).map_err(|e| e.to_string())
             }
             _ => Err(format!("Unknown method: {}", req.method)),
         }
