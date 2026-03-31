@@ -1,0 +1,10 @@
+[book]
+authors = ["Seisly Contributors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Seisly User Manual"
+
+[output.html]
+git-repository-url = "https://github.com/seisly/seisly"
+edit-url-template = "https://github.com/seisly/seisly/edit/main/docs/user-manual/{path}"
