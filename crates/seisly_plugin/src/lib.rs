@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod manager;
+pub mod manifest;
 
 #[cfg(feature = "python")]
 pub mod python;
@@ -12,8 +13,4 @@ pub mod interpreter;
 
 pub use api::{Plugin, PluginContext, PluginCommand, PluginError, Result};
 pub use manager::PluginManager;
-
-#[cfg(feature = "python")]
-pub use python::*;
-#[cfg(feature = "python")]
-pub use interpreter::*;
+pub use manifest::PluginManifest;

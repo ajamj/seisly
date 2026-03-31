@@ -115,5 +115,5 @@ candle-nn = "0.3"
 half = "=2.4.0"
 
 # Python integration
-pyo3 = { version = "0.20", features = ["extension-module", "serde"] }
-numpy = "0.20"
+pyo3 = { version = "0.22.6", features = ["extension-module", "serde"] }
+numpy = "0.22.1"

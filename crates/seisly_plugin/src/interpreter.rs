@@ -18,7 +18,7 @@ impl PythonInterpreter {
     /// Execute a Python string.
     pub fn run_string(&self, code: &str) -> PyResult<()> {
         Python::with_gil(|py| {
-            py.run(code, None, None)
+            py.run_bound(code, None, None)
         })
     }
 }

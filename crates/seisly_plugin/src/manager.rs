@@ -1,8 +1,41 @@
-//! Plugin Manager
-
-use crate::api::{Plugin, PluginContext, PluginError, Result};
+use crate::api::{Plugin, PluginContext, PluginCommand, PluginError, Result};
+use crate::manifest::PluginManifest;
 use std::collections::HashMap;
 use std::path::Path;
+use std::fs;
+
+/// A temporary placeholder for a discovered but not yet fully loaded plugin
+pub struct PlaceholderPlugin {
+    manifest: PluginManifest,
+}
+
+impl PlaceholderPlugin {
+    pub fn new(manifest: PluginManifest) -> Self {
+        Self { manifest }
+    }
+}
+
+impl Plugin for PlaceholderPlugin {
+    fn name(&self) -> &str {
+        &self.manifest.name
+    }
+
+    fn version(&self) -> &str {
+        &self.manifest.version
+    }
+
+    fn description(&self) -> &str {
+        self.manifest.description.as_deref().unwrap_or("No description")
+    }
+
+    fn commands(&self) -> Vec<PluginCommand> {
+        vec![]
+    }
+
+    fn execute(&self, _cmd: &str, _args: serde_json::Value) -> Result<serde_json::Value> {
+        Err(PluginError::ExecutionError("Plugin not yet fully loaded".to_string()))
+    }
+}
 
 /// Manages plugin registration and execution
 pub struct PluginManager {
@@ -37,8 +70,28 @@ impl PluginManager {
     }
     
     /// Discover plugins from directory
-    pub fn discover(&mut self, _path: &Path) -> Result<()> {
-        // TODO: Implement plugin discovery from directory
+    pub fn discover(&mut self, path: &Path) -> Result<()> {
+        if !path.exists() || !path.is_dir() {
+            return Ok(());
+        }
+
+        for entry in fs::read_dir(path).map_err(|e| PluginError::ExecutionError(e.to_string()))? {
+            let entry = entry.map_err(|e| PluginError::ExecutionError(e.to_string()))?;
+            let path = entry.path();
+            if path.is_dir() {
+                let manifest_path = path.join("manifest.yaml");
+                if manifest_path.exists() {
+                    match PluginManifest::from_file(&manifest_path) {
+                        Ok(manifest) => {
+                            self.register(Box::new(PlaceholderPlugin::new(manifest)));
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to parse manifest at {:?}: {}", manifest_path, e);
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }
     

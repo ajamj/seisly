@@ -7,10 +7,14 @@ description = "Plugin system for StrataForge"
 [dependencies]
 seisly_core.workspace = true
 thiserror.workspace = true
+anyhow.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true
 pyo3 = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [features]
 python = ["pyo3"]
