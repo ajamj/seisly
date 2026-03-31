@@ -1,6 +1,7 @@
 //! Fault-Guided Horizon Tracking
 
 use seisly_core::domain::{surface::Surface, fault::Fault};
+use seisly_core::Crs;
 use seisly_ml::AutoTracker;
 
 /// Fault-Guided Tracker - track horizons with fault constraints
@@ -20,13 +21,13 @@ impl FaultGuidedTracker {
     /// Track horizon with fault boundaries
     pub fn track_with_faults(
         &self,
-        seismic: &dyn sf_compute::seismic::TraceProvider,
-        seed_il: usize,
-        seed_xl: usize,
-        seed_twt: f32,
+        seismic: &dyn seisly_compute::seismic::TraceProvider,
+        seed_il: i32,
+        seed_xl: i32,
+        seed_sample: i32,
     ) -> Result<Surface, String> {
         // Track until fault is encountered
-        let mut surface = self.base_tracker.track(seismic, seed_il, seed_xl, seed_twt)?;
+        let mut surface = self.base_tracker.track(seismic, seed_il, seed_xl, seed_sample)?;
         
         // Split surface at faults
         self.split_at_faults(&mut surface);
@@ -35,8 +36,8 @@ impl FaultGuidedTracker {
     }
     
     /// Split horizon surface at fault locations
-    fn split_at_faults(&self, surface: &mut Surface) {
-        for fault in &self.faults {
+    fn split_at_faults(&self, _surface: &mut Surface) {
+        for _fault in &self.faults {
             // Find surface points near fault
             // Split surface into separate panels
             // In production: implement proper surface splitting
@@ -46,13 +47,13 @@ impl FaultGuidedTracker {
     /// Track multiple panels separated by faults
     pub fn track_fault_bounded_panels(
         &self,
-        seismic: &dyn sf_compute::seismic::TraceProvider,
-        seeds: &[(usize, usize, f32)], // (il, xl, twt) for each panel
+        seismic: &dyn seisly_compute::seismic::TraceProvider,
+        seeds: &[(i32, i32, i32)], // (il, xl, sample) for each panel
     ) -> Result<Vec<Surface>, String> {
         let mut panels = Vec::new();
         
-        for (il, xl, twt) in seeds {
-            let panel = self.base_tracker.track(seismic, *il, *xl, *twt)?;
+        for (il, xl, sample) in seeds {
+            let panel = self.base_tracker.track(seismic, *il, *xl, *sample)?;
             panels.push(panel);
         }
         
@@ -95,20 +96,19 @@ impl FaultGuidedTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use candle_nn::VarBuilder;
 
     #[test]
     fn test_fault_guided_tracker_creation() {
+        let device = candle_core::Device::Cpu;
+        let vb = VarBuilder::zeros(candle_core::DType::F32, &device);
+        
         let tracker = AutoTracker::new(
-            sf_ml::HorizonCNN::new(
-                candle_nn::VarBuilder::zeros(
-                    candle_nn::VarBuilderArgs::default(),
-                    &candle_core::Device::Cpu,
-                ).unwrap()
-            ).unwrap()
+            seisly_ml::HorizonCNN::new(vb).unwrap()
         );
         
         let faults = Vec::new();
-        let guided_tracker = FaultGuidedTracker::new(tracker, faults);
+        let _guided_tracker = FaultGuidedTracker::new(tracker, faults);
         
         assert!(true);
     }

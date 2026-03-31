@@ -1,6 +1,6 @@
 //! Fault Detection with Deep Learning
 
-use candle_core::{Device, Result, Tensor};
+use candle_core::{Result, Tensor};
 use crate::unet::HorizonUNet;
 
 /// Fault Detection using U-Net
@@ -16,10 +16,10 @@ impl FaultDetector {
     
     /// Detect faults from seismic volume
     pub fn detect(&self, seismic: &Tensor) -> Result<FaultMap> {
-        let (_offset, confidence) = self.model.forward(seismic)?;
+        let (_offset, confidence) = self.model.forward_t(seismic, false)?;
         
         // Threshold confidence to get fault probability
-        let fault_prob = ((&confidence - self.threshold)?.gt(0.0))?;
+        let fault_prob = confidence.affine(1.0, -self.threshold as f64)?.gt(0.0)?;
         
         Ok(FaultMap {
             probability: confidence,
@@ -32,10 +32,10 @@ impl FaultDetector {
         let thresholds = vec![0.3, 0.5, 0.7];
         let mut maps = Vec::new();
         
-        let (_offset, confidence) = self.model.forward(seismic)?;
+        let (_offset, confidence) = self.model.forward_t(seismic, false)?;
         
         for threshold in thresholds {
-            let fault_prob = ((&confidence - threshold)?.gt(0.0))?;
+            let fault_prob = confidence.affine(1.0, -threshold as f64)?.gt(0.0)?;
             maps.push(FaultMap {
                 probability: confidence.clone(),
                 binary: fault_prob,
@@ -55,17 +55,22 @@ pub struct FaultMap {
 impl FaultMap {
     /// Get fault statistics
     pub fn statistics(&self) -> Result<FaultStats> {
-        let prob_data = self.probability.to_vec1::<f32>()?;
+        let prob_data = self.probability.flatten_all()?.to_vec1::<f32>()?;
         
         let mean = prob_data.iter().sum::<f32>() / prob_data.len() as f32;
         let max = prob_data.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
         let min = prob_data.iter().cloned().fold(f32::INFINITY, f32::min);
         
+        let fault_area = self.binary
+            .to_dtype(candle_core::DType::F32)?
+            .sum_all()?
+            .to_scalar::<f32>()?;
+        
         Ok(FaultStats {
             mean_probability: mean,
             max_probability: max,
             min_probability: min,
-            fault_area: self.binary.to_vec1::<f32>()?.iter().sum(),
+            fault_area,
         })
     }
 }
@@ -84,7 +89,7 @@ pub struct FaultNetwork;
 
 impl FaultNetwork {
     /// Analyze fault connectivity
-    pub fn analyze_connectivity(fault_map: &FaultMap) -> Result<ConnectivityMetrics> {
+    pub fn analyze_connectivity(_fault_map: &FaultMap) -> Result<ConnectivityMetrics> {
         // TODO: Implement connectivity analysis
         Ok(ConnectivityMetrics {
             num_faults: 0,
@@ -94,7 +99,7 @@ impl FaultNetwork {
     }
     
     /// Compute fault throw distribution
-    pub fn throw_distribution(fault_map: &FaultMap) -> Result<Vec<f32>> {
+    pub fn throw_distribution(_fault_map: &FaultMap) -> Result<Vec<f32>> {
         // TODO: Implement throw calculation
         Ok(vec![])
     }
@@ -111,22 +116,23 @@ pub struct ConnectivityMetrics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_nn::VarBuilderArgs;
+    use candle_core::Device;
+    use candle_nn::VarBuilder;
 
     #[test]
     fn test_fault_detector_creation() {
         let device = Device::Cpu;
-        let vb = VarBuilder::zeros(VarBuilderArgs::default(), &device);
+        let vb = VarBuilder::zeros(candle_core::DType::F32, &device);
         let model = HorizonUNet::new(vb).unwrap();
         
-        let detector = FaultDetector::new(model, 0.5);
+        let _detector = FaultDetector::new(model, 0.5);
         assert!(true);
     }
 
     #[test]
     fn test_fault_detection() {
         let device = Device::Cpu;
-        let vb = VarBuilder::zeros(VarBuilderArgs::default(), &device);
+        let vb = VarBuilder::zeros(candle_core::DType::F32, &device);
         let model = HorizonUNet::new(vb).unwrap();
         
         let detector = FaultDetector::new(model, 0.5);

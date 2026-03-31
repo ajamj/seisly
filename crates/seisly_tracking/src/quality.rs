@@ -52,7 +52,7 @@ pub struct QualityAnalyzer;
 
 impl QualityAnalyzer {
     /// Analyze tracking quality
-    pub fn analyze(surface: &Surface, seismic: &dyn sf_compute::seismic::TraceProvider) -> TrackingQuality {
+    pub fn analyze(surface: &Surface, seismic: &dyn seisly_compute::seismic::TraceProvider) -> TrackingQuality {
         let confidence = Self::compute_confidence(surface, seismic);
         let continuity = Self::compute_continuity(surface);
         let plausibility = Self::compute_geological_plausibility(surface);
@@ -61,22 +61,22 @@ impl QualityAnalyzer {
     }
     
     /// Compute confidence from tracking algorithm
-    fn compute_confidence(surface: &Surface, _seismic: &dyn sf_compute::seismic::TraceProvider) -> f32 {
+    fn compute_confidence(surface: &Surface, _seismic: &dyn seisly_compute::seismic::TraceProvider) -> f32 {
         // In production: use ML confidence values
         // For now, based on surface point density
-        let num_points = surface.points().len();
+        let num_points: usize = surface.meshes.iter().map(|m| m.vertices.len()).sum();
         (num_points as f32 / 1000.0).min(1.0)
     }
     
     /// Compute horizon continuity
-    fn compute_continuity(surface: &Surface) -> f32 {
+    fn compute_continuity(_surface: &Surface) -> f32 {
         // Analyze surface smoothness and gaps
         // In production: implement proper continuity analysis
         0.8 // Dummy value
     }
     
     /// Compute geological plausibility
-    fn compute_geological_plausibility(surface: &Surface) -> f32 {
+    fn compute_geological_plausibility(_surface: &Surface) -> f32 {
         // Check for:
         // - Unrealistic dips (> 90 degrees)
         // - Depth inversions
@@ -123,7 +123,7 @@ impl QualityAnalyzer {
     /// Generate QC report
     pub fn generate_report(
         surface: &Surface,
-        seismic: &dyn sf_compute::seismic::TraceProvider,
+        seismic: &dyn seisly_compute::seismic::TraceProvider,
     ) -> QCReport {
         let quality = Self::analyze(surface, seismic);
         let mut issues = Vec::new();

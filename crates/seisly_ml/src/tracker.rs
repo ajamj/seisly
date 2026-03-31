@@ -30,17 +30,17 @@ impl AutoTracker {
     }
 
     /// Track horizon from seed point using CNN
-    pub fn track<P: TraceProvider>(
+    pub fn track(
         &self,
-        seismic: &P,
+        seismic: &dyn TraceProvider,
         seed_il: i32,
         seed_xl: i32,
-        seed_sample: usize,
+        seed_sample: i32,
     ) -> Result<Surface, String> {
         let mut picks: Vec<(i32, i32, f32)> = Vec::new();
         let mut queue: VecDeque<(i32, i32, f32)> = VecDeque::new();
 
-        // Add seed point (convert sample index to f32 for offset arithmetic)
+        // Add seed point
         queue.push_back((seed_il, seed_xl, seed_sample as f32));
         let mut visited: HashSet<(i32, i32)> = HashSet::new();
 
@@ -55,7 +55,7 @@ impl AutoTracker {
 
             // Extract patch and predict
             let patch = self
-                .extract_patch(seismic, il, xl, twt as usize)
+                .extract_patch(seismic, il, xl, twt as i32)
                 .unwrap_or_else(|_| self.create_zero_patch());
             let offset = self.predict_horizon_offset(&patch).unwrap_or(0.0);
 
@@ -86,6 +86,8 @@ impl AutoTracker {
 
         // Extract scalar value from output tensor
         let offset = output
+            .flatten_all()
+            .map_err(|e| e.to_string())?
             .to_vec1::<f32>()
             .map_err(|e| e.to_string())?
             .first()
@@ -124,13 +126,12 @@ impl AutoTracker {
     }
 
     /// Extract seismic patch around point
-    #[allow(dead_code)]
-    fn extract_patch<P: TraceProvider>(
+    fn extract_patch(
         &self,
-        seismic: &P,
+        seismic: &dyn TraceProvider,
         il: i32,
         xl: i32,
-        sample_idx: usize,
+        sample_idx: i32,
     ) -> Result<Tensor, String> {
         let half_patch = self.patch_size / 2;
         let (il_min, il_max) = seismic.inline_range();
@@ -150,7 +151,7 @@ impl AutoTracker {
                 let trace = seismic.get_trace(i, j)
                     .unwrap_or_else(|| vec![0.0; sample_count]);
                 
-                let value = trace.get(sample_idx).copied().unwrap_or(0.0);
+                let value = trace.get(sample_idx as usize).copied().unwrap_or(0.0);
                 patch_data.push(value);
             }
         }
