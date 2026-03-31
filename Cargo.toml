@@ -19,6 +19,7 @@ members = [
   "crates/seisly_fwi",
   "crates/seisly_tracking",
   "crates/seisly_production",
+  "crates/seisly_py_worker",
   # Note: seisly_ai is Python-only (AI server), not a Rust crate
 ]
 
@@ -48,6 +49,7 @@ seisly_ml_deep = { path = "crates/seisly_ml_deep" }
 seisly_fwi = { path = "crates/seisly_fwi" }
 seisly_tracking = { path = "crates/seisly_tracking" }
 seisly_production = { path = "crates/seisly_production" }
+seisly_py_worker = { path = "crates/seisly_py_worker" }
 seisly_ai = { path = "crates/seisly_ai" }
 
 # Serialization
@@ -86,13 +88,13 @@ clap = { version = "4.4", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Desktop (for sf_app)
+# Desktop (for seisly_app)
 egui = "0.29"
 eframe = "0.29"
 wgpu = "22.1"
 winit = "0.30"
 
-# Server (for sf_server)
+# Server (for seisly_server)
 axum = "0.7"
 tower = "0.4"
 utoipa = { version = "4.2", features = ["axum_extras"] }

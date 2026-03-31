@@ -1,0 +1,15 @@
+[package]
+name = "seisly_py_worker"
+version.workspace = true
+edition.workspace = true
+description = "Process-isolated Python worker for Seisly plugins"
+
+[dependencies]
+seisly_core.workspace = true
+pyo3 = { workspace = true }
+numpy = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+ndarray = { workspace = true }
