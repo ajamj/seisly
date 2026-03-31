@@ -1,0 +1,6 @@
+name: Mock Horizon Tracker
+version: 0.1.0
+plugin_type: horizon
+entry_point: main.py
+author: StrataForge Team
+description: A mock AI plugin that generates a flat horizon for testing.

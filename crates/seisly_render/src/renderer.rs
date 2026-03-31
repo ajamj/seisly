@@ -36,10 +36,12 @@ impl Renderer {
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Basic Pipeline"),
             layout: Some(&pipeline_layout),
+            cache: None,
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
                 buffers: &[],
+                compilation_options: Default::default(),
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -49,6 +51,7 @@ impl Renderer {
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
+                compilation_options: Default::default(),
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -141,6 +144,7 @@ impl Renderer {
         let rgb_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("RGB Blend Pipeline"),
             layout: Some(&rgb_pipeline_layout),
+            cache: None,
             vertex: VertexState {
                 module: &rgb_shader,
                 entry_point: "vs_main",
@@ -160,6 +164,7 @@ impl Renderer {
                         },
                     ],
                 }],
+                compilation_options: Default::default(),
             },
             fragment: Some(FragmentState {
                 module: &rgb_shader,
@@ -169,6 +174,7 @@ impl Renderer {
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 })],
+                compilation_options: Default::default(),
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleStrip,
@@ -262,6 +268,7 @@ impl Renderer {
         let volumetric_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Volumetric Pipeline"),
             layout: Some(&volumetric_pipeline_layout),
+            cache: None,
             vertex: VertexState {
                 module: &volumetric_shader,
                 entry_point: "vs_main",
@@ -281,6 +288,7 @@ impl Renderer {
                         },
                     ],
                 }],
+                compilation_options: Default::default(),
             },
             fragment: Some(FragmentState {
                 module: &volumetric_shader,
@@ -290,6 +298,7 @@ impl Renderer {
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: ColorWrites::ALL,
                 })],
+                compilation_options: Default::default(),
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
@@ -371,10 +380,10 @@ impl Renderer {
         (texture, view)
     }
 
-    pub fn render<'a>(
-        &'a self,
-        render_pass: &mut RenderPass<'a>,
-        scene: &'a Scene,
+    pub fn render<'pass>(
+        &self,
+        render_pass: &mut RenderPass<'pass>,
+        scene: &Scene,
         camera_pos: [f32; 3],
     ) {
         render_pass.set_pipeline(&self.pipeline);

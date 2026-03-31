@@ -477,11 +477,11 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
         _egui_encoder: &mut egui_wgpu::wgpu::CommandEncoder,
         resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<egui_wgpu::wgpu::CommandBuffer> {
-        if !resources.contains::<sf_render::Renderer>() {
-            resources.insert(sf_render::Renderer::new(device, self.format));
+        if !resources.contains::<seisly_render::Renderer>() {
+            resources.insert(seisly_render::Renderer::new(device, self.format));
         }
-        if !resources.contains::<sf_render::Scene>() {
-            resources.insert(sf_render::Scene::new());
+        if !resources.contains::<seisly_render::Scene>() {
+            resources.insert(seisly_render::Scene::new());
         }
         if !resources.contains::<FaultRenderer>() {
             resources.insert(FaultRenderer::new(device, self.format));
@@ -489,14 +489,14 @@ impl egui_wgpu::CallbackTrait for ViewportCallback {
         Vec::new()
     }
 
-    fn paint<'a>(
-        &'a self,
+    fn paint(
+        &self,
         _info: egui::PaintCallbackInfo,
-        render_pass: &mut egui_wgpu::wgpu::RenderPass<'a>,
-        resources: &'a egui_wgpu::CallbackResources,
+        render_pass: &mut eframe::wgpu::RenderPass<'static>,
+        resources: &eframe::egui_wgpu::CallbackResources,
     ) {
-        let renderer = resources.get::<sf_render::Renderer>();
-        let scene = resources.get::<sf_render::Scene>();
+        let renderer = resources.get::<seisly_render::Renderer>();
+        let scene = resources.get::<seisly_render::Scene>();
 
         // Render base scene (stubs for future 3D)
         if let (Some(renderer), Some(scene)) = (renderer, scene) {

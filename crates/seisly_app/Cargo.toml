@@ -13,6 +13,7 @@ seisly_storage.workspace = true
 seisly_io.workspace = true
 seisly_compute.workspace = true
 seisly_render.workspace = true
+seisly_plugin = { workspace = true, features = ["python"] }
 eframe = { workspace = true, features = ["wgpu"] }
 egui = { workspace = true, features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["svg", "all_loaders"] }
@@ -25,6 +26,9 @@ serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 tempfile.workspace = true
+
+[features]
+python = ["seisly_plugin/python"]
 
 [build-dependencies]
 tonic-build.workspace = true

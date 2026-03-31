@@ -175,6 +175,7 @@ impl FaultRenderer {
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Fault Pipeline"),
             layout: Some(&pipeline_layout),
+            cache: None,
             vertex: VertexState {
                 module: &shader,
                 entry_point: "vs_main",
@@ -194,6 +195,7 @@ impl FaultRenderer {
                         },
                     ],
                 }],
+                compilation_options: Default::default(),
             },
             fragment: Some(FragmentState {
                 module: &shader,
@@ -214,6 +216,7 @@ impl FaultRenderer {
                     }),
                     write_mask: ColorWrites::ALL,
                 })],
+                compilation_options: Default::default(),
             }),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,

@@ -12,6 +12,7 @@ use crate::widgets::velocity_panel::VelocityPanel;
 use crate::widgets::viewport::ViewportWidget;
 use crate::widgets::well_panel::WellPanel;
 use seisly_compute::seismic::{InMemoryProvider, SeismicVolume};
+use seisly_plugin::PluginManager;
 use seisly_storage::project::SeismicVolumeEntry;
 
 pub struct VisualSettings {
@@ -62,6 +63,9 @@ pub struct StrataForgeApp {
     recent_projects: Vec<std::path::PathBuf>,
     settings: crate::widgets::settings_panel::SettingsPanel,
     show_settings: bool,
+    plugin_manager: PluginManager,
+    plugin_panel: crate::widgets::plugin_panel::PluginPanel,
+    plugin_results: Vec<serde_json::Value>,
 }
 
 impl StrataForgeApp {
@@ -130,6 +134,10 @@ impl StrataForgeApp {
             channel_assignment: 0,
         }];
 
+        let mut plugin_manager = PluginManager::new();
+        // Discovery on startup
+        let _ = plugin_manager.discover(std::path::Path::new("plugins"));
+
         Self {
             name: "MyField".to_owned(),
             viewport,
@@ -151,6 +159,9 @@ impl StrataForgeApp {
             recent_projects: Vec::new(),
             settings: crate::widgets::settings_panel::SettingsPanel::new(),
             show_settings: false,
+            plugin_manager,
+            plugin_panel: crate::widgets::plugin_panel::PluginPanel::new(),
+            plugin_results: Vec::new(),
         }
     }
 
@@ -273,6 +284,28 @@ impl StrataForgeApp {
             }
         }
     }
+
+    fn handle_plugin_result(&mut self, result: serde_json::Value) {
+        if let Some(picks) = result.get("picks").and_then(|p| p.as_array()) {
+            if let Some(horizon) = self.interpretation.active_horizon_mut() {
+                for pick_val in picks {
+                    if let (Some(x), Some(y), Some(z)) = (
+                        pick_val.get("x").and_then(|v| v.as_f64()),
+                        pick_val.get("y").and_then(|v| v.as_f64()),
+                        pick_val.get("z").and_then(|v| v.as_f64()),
+                    ) {
+                        use crate::interpretation::{Pick, PickSource};
+                        horizon.add_pick(Pick::new(
+                            [x as f32, y as f32, z as f32],
+                            PickSource::AutoTracked,
+                        ));
+                    }
+                }
+                horizon.update_mesh();
+                println!("Imported {} picks from plugin.", picks.len());
+            }
+        }
+    }
 }
 
 impl eframe::App for StrataForgeApp {
@@ -315,6 +348,9 @@ impl eframe::App for StrataForgeApp {
                     if ui.button("Well-Seismic Tie\tT").clicked() {
                         // Show well tie
                     }
+                    if ui.button("🧩 Plugin Manager...").clicked() {
+                        self.plugin_panel.is_open = true;
+                    }
                     ui.separator();
                     if ui.button("⚙️ Settings...").clicked() {
                         self.show_settings = true;
@@ -355,7 +391,7 @@ impl eframe::App for StrataForgeApp {
         if self.show_settings {
             egui::Window::new("⚙️ Settings")
                 .collapsible(false)
-                .resizable()
+                .resizable(true)
                 .default_size([600.0, 500.0])
                 .show(ctx, |ui| {
                     if self.settings.ui(ui) {
@@ -366,6 +402,14 @@ impl eframe::App for StrataForgeApp {
                         self.show_settings = false;
                     }
                 });
+        }
+
+        // Plugin Manager Panel
+        self.plugin_panel.show(ctx, &mut self.plugin_manager, &mut self.plugin_results);
+
+        // Handle Plugin Results
+        while let Some(result) = self.plugin_results.pop() {
+            self.handle_plugin_result(result);
         }
 
         // Top Ribbon - Modern toolbar

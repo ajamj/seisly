@@ -6,6 +6,7 @@ pub mod viewport;
 pub mod well_panel;
 pub mod synthetic_data;
 pub mod settings_panel;
+pub mod plugin_panel;
 
 // Re-exports for app.rs - allowed unused as they are public API
 #[allow(unused_imports)]
@@ -24,3 +25,5 @@ pub use well_panel::WellPanel;
 pub use synthetic_data::SyntheticDataWidget;
 #[allow(unused_imports)]
 pub use settings_panel::SettingsPanel;
+#[allow(unused_imports)]
+pub use plugin_panel::PluginPanel;

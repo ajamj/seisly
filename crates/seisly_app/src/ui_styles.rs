@@ -189,11 +189,6 @@ impl PanelStyle {
             .fill(colors::DARK_BACKGROUND);
 
         let response = ui.add(button);
-        if response.hovered() {
-            egui::show_tooltip(ui.ctx(), response.id, |ui| {
-                ui.label(tooltip);
-            });
-        }
-        response
+        response.on_hover_text(tooltip)
     }
 }

@@ -11,6 +11,6 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "StrataForge",
         native_options,
-        Box::new(|cc| Box::new(StrataForgeApp::new(cc))),
+        Box::new(|cc| Ok(Box::new(StrataForgeApp::new(cc)))),
     )
 }
