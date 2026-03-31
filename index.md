@@ -34,6 +34,7 @@ Handle massive seismic volumes beyond your RAM capacity with our LRU brick cachi
 | Section | Description |
 |:--- |:--- |
 | [**User Manual**](./user-manual/) | Comprehensive guide for end-users (mdBook). |
+| [**API Reference**](./api/) | Technical documentation for Seisly crates and modules (RustDoc). |
 | [**Getting Started**]({% link docs/getting-started/quickstart.md %}) | Set up Seisly in less than 5 minutes. |
 | [**Core Features**]({% link docs/README.md %}) | Deep dives into Horizon Picking, Fault Modeling, and more. |
 | [**Architecture**]({% link docs/architecture.md %}) | Technical overview of the crate structure and data flow. |

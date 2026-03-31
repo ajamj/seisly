@@ -21,9 +21,27 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    env:
+      PYO3_USE_ABI3_FORWARD_COMPATIBILITY: 1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libproj-dev libsqlite3-dev protobuf-compiler
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build API Documentation (cargo doc)
+        run: |
+          cargo doc --workspace --no-deps --features python
+          # Create a redirect from /api/ to the main app docs
+          echo '<meta http-equiv="refresh" content="0; url=seisly_app/index.html">' > target/doc/index.html
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
@@ -42,14 +60,19 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: true
 
-      - name: Install dependencies
+      - name: Install Ruby dependencies
         run: bundle install
 
       - name: Build with Jekyll
         run: bundle exec jekyll build
 
-      - name: Merge mdBook into Jekyll site
+      - name: Merge all documentation into Jekyll site
         run: |
+          # Integrate API Docs
+          mkdir -p _site/api
+          cp -r target/doc/* _site/api/
+          
+          # Integrate User Manual
           mkdir -p _site/user-manual
           cp -r docs/user-manual/book/* _site/user-manual/
 
