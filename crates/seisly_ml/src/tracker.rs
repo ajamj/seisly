@@ -105,8 +105,17 @@ impl AutoTracker {
             .map(|(il, xl, twt)| [*il as f32, *xl as f32, *twt])
             .collect();
 
-        // Create mesh from vertices (no indices for point cloud)
-        let mesh = Mesh::new(vertices, vec![]);
+        // Triangulate the picks for proper surface rendering with smooth normals
+        let mesh = match seisly_compute::triangulation::triangulate_points(&vertices) {
+            Ok(mesh) => {
+                // Normals are already computed by triangulate_points
+                mesh
+            }
+            Err(_) => {
+                // Fallback to point cloud if triangulation fails (e.g., not enough points)
+                Mesh::new(vertices, vec![])
+            }
+        };
 
         Surface::new(
             "AutoTracked Horizon".to_string(),

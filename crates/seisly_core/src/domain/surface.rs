@@ -30,7 +30,11 @@ impl Mesh {
         }
     }
 
-    /// Compute vertex normals by averaging face normals.
+    /// Compute vertex normals by averaging face normals with area weighting.
+    /// 
+    /// Area-weighted normals prevent small triangles from disproportionately affecting
+    /// the surface appearance, resulting in smoother shading for horizons with varying
+    /// triangle sizes.
     pub fn compute_normals(&mut self) {
         let mut normals = vec![[0.0, 0.0, 0.0]; self.vertices.len()];
 
@@ -48,14 +52,16 @@ impl Mesh {
             let e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
             let e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
 
-            // Cross product (e1 x e2)
+            // Cross product (e1 x e2) gives area-weighted face normal
+            // The magnitude of the cross product is 2 * triangle area
             let face_normal = [
                 e1[1] * e2[2] - e1[2] * e2[1],
                 e1[2] * e2[0] - e1[0] * e2[2],
                 e1[0] * e2[1] - e1[1] * e2[0],
             ];
 
-            // Accumulate face normal into each vertex normal
+            // Area-weighted accumulation: larger triangles contribute more to vertex normals
+            // The cross product magnitude is already proportional to triangle area
             for &idx in chunk {
                 let n = &mut normals[idx as usize];
                 n[0] += face_normal[0];
@@ -72,7 +78,7 @@ impl Mesh {
                 n[1] /= length;
                 n[2] /= length;
             } else {
-                // Fallback for zero-length normal
+                // Fallback for zero-length normal (degenerate case)
                 *n = [0.0, 1.0, 0.0];
             }
         }

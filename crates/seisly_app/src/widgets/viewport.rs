@@ -1,4 +1,5 @@
-use crate::interpretation::{InterpretationState, Pick, PickSource, PickingMode, VelocityState};
+use crate::interpretation::{HistoryManager, InterpretationState, Pick, PickSource, PickingMode, VelocityState};
+use crate::interpretation::history::{AddPickCommand, AutoTrackCommand, AddFaultStickCommand};
 use eframe::egui_wgpu;
 
 use seisly_compute::seismic::SeismicVolume;
@@ -35,6 +36,7 @@ impl ViewportWidget {
         &mut self,
         ui: &mut egui::Ui,
         interpretation: &mut InterpretationState,
+        history: &mut HistoryManager,
         velocity: &VelocityState,
         volume: Option<&SeismicVolume>,
     ) {
@@ -125,10 +127,13 @@ impl ViewportWidget {
             if response.drag_stopped() {
                 if !self.sketch_points.is_empty() {
                     if let Some(fault) = interpretation.active_fault_mut() {
-                        fault.add_stick(crate::interpretation::FaultStick::new(
+                        let fault_id = fault.id;
+                        let stick = crate::interpretation::FaultStick::new(
                             self.sketch_points.clone(),
-                        ));
-                        fault.update_mesh();
+                        );
+                        // Use command for undo/redo support
+                        let command = Box::new(AddFaultStickCommand::new(fault_id, stick));
+                        history.execute(command, interpretation);
                     }
                     self.sketch_points.clear();
                 }
@@ -136,7 +141,7 @@ impl ViewportWidget {
         } else if response.clicked() {
             if let Some(pos) = response.interact_pointer_pos() {
                 if interpretation.picking_mode != PickingMode::None {
-                    self.handle_click(pos, rect, interpretation, velocity, volume);
+                    self.handle_click(pos, rect, interpretation, history, velocity, volume);
                 }
             }
         }
@@ -398,6 +403,7 @@ impl ViewportWidget {
         pos: egui::Pos2,
         rect: egui::Rect,
         interpretation: &mut InterpretationState,
+        history: &mut HistoryManager,
         velocity: &VelocityState,
         volume: Option<&SeismicVolume>,
     ) {
@@ -428,14 +434,17 @@ impl ViewportWidget {
 
                 if interpretation.picking_mode == PickingMode::AutoTrack {
                     let results = track_event(vol, iline, xline, sample, true, 0.5);
-                    if let Some(horizon) = interpretation.active_horizon_mut() {
-                        for (il, xl, s) in results {
-                            horizon.add_pick(Pick::new(
-                                [il as f32, xl as f32, s as f32],
-                                PickSource::AutoTracked,
-                            ));
-                        }
-                        horizon.update_mesh();
+                    if let Some(horizon) = interpretation.active_horizon() {
+                        let horizon_id = horizon.id;
+                        let picks: Vec<Pick> = results
+                            .iter()
+                            .map(|(il, xl, s)| {
+                                Pick::new([*il as f32, *xl as f32, *s as f32], PickSource::AutoTracked)
+                            })
+                            .collect();
+                        // Use command for undo/redo support
+                        let command = Box::new(AutoTrackCommand::new(horizon_id, picks));
+                        history.execute(command, interpretation);
                     }
                     return;
                 }
@@ -444,16 +453,16 @@ impl ViewportWidget {
 
         // Manual or Seed pick
         let picking_mode = interpretation.picking_mode;
-        if let Some(horizon) = interpretation.active_horizon_mut() {
+        if let Some(horizon) = interpretation.active_horizon() {
+            let horizon_id = horizon.id;
             let source = match picking_mode {
                 PickingMode::Seed => PickSource::Seed,
                 _ => PickSource::Manual,
             };
-            horizon.add_pick(Pick::new(
-                [iline as f32, xline as f32, sample as f32],
-                source,
-            ));
-            horizon.update_mesh();
+            let pick = Pick::new([iline as f32, xline as f32, sample as f32], source);
+            // Use command for undo/redo support
+            let command = Box::new(AddPickCommand::new(horizon_id, pick));
+            history.execute(command, interpretation);
         }
     }
 }

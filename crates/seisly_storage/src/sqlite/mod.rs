@@ -1,7 +1,7 @@
 //! SQLite database handling
 
 use anyhow::Result;
-use rusqlite::Connection;
+use rusqlite::{Connection, Transaction};
 use std::path::Path;
 
 /// Open database connection and run migrations
@@ -32,6 +32,18 @@ pub fn init_database(db_path: &Path) -> Result<Connection> {
     }
 
     open_database(db_path)
+}
+
+/// Execute a closure within a database transaction
+/// This ensures atomicity - either all operations succeed or none do
+pub fn with_transaction<F, T>(conn: &mut Connection, f: F) -> Result<T>
+where
+    F: FnOnce(&Transaction) -> Result<T>,
+{
+    let tx = conn.transaction()?;
+    let result = f(&tx)?;
+    tx.commit()?;
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -86,6 +98,51 @@ mod tests {
             tables.contains(&"fault_sticks".to_string()),
             "fault_sticks table should exist"
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_transaction_wrapper() -> Result<()> {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test_transaction.sqlite");
+
+        let mut conn = init_database(&db_path)?;
+
+        // Test successful transaction
+        let result = with_transaction(&mut conn, |tx| {
+            tx.execute("INSERT INTO datasets (id, type, name, crs_def, created_at) VALUES (?, ?, ?, ?, ?)",
+                       ["test1", "surface", "Test Surface", "EPSG:32648", "2026-04-01"])?;
+            Ok(42i32)
+        })?;
+
+        assert_eq!(result, 42);
+
+        // Verify the insert succeeded
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM datasets WHERE id = 'test1'",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(count, 1);
+
+        // Test transaction rollback on error
+        let test_result: Result<()> = with_transaction(&mut conn, |tx| {
+            tx.execute("INSERT INTO datasets (id, type, name, crs_def, created_at) VALUES (?, ?, ?, ?, ?)",
+                       ["test2", "surface", "Test Surface 2", "EPSG:32648", "2026-04-01"])?;
+            // Simulate an error
+            anyhow::bail!("Simulated error")
+        });
+
+        assert!(test_result.is_err());
+
+        // Verify test2 was NOT inserted (rollback)
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM datasets WHERE id = 'test2'",
+            [],
+            |row| row.get(0),
+        )?;
+        assert_eq!(count, 0);
 
         Ok(())
     }

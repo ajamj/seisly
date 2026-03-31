@@ -152,7 +152,7 @@ impl SeislyApp {
             well_panel: WellPanel::new(),
             wells: WellState::new(),
             interpretation,
-            history: HistoryManager::new(),
+            history: HistoryManager::new(100),
             visuals: VisualSettings::default(),
             volume,
             seismic_volumes,
@@ -195,6 +195,7 @@ impl SeislyApp {
         self.viewport.ui(
             ui,
             &mut self.interpretation,
+            &mut self.history,
             &self.velocity,
             self.volume.as_ref(),
         );

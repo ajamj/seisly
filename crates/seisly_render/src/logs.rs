@@ -95,6 +95,7 @@ impl LogRenderer {
 
         let mut mesh = Mesh::new(vertices, indices);
         mesh.colors = Some(colors);
+        mesh.compute_normals();
         mesh
     }
 }
