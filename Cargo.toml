@@ -89,6 +89,7 @@ clap = { version = "4.4", features = ["derive"] }
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+log = "0.4"
 
 # Desktop (for seisly_app)
 egui = "0.29"
@@ -110,6 +111,7 @@ tempfile = "3.9"
 # IPC
 shared_memory = "0.12"
 bytemuck = "1.14"
+sysinfo = "0.30"
 
 # SEG-Y I/O
 giga-segy-in = "0.5"

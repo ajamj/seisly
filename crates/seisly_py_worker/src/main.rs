@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use serde::{Deserialize, Serialize};
 use std::io::{self, BufRead, Write};
-use numpy::PyArrayDyn;
+use numpy::{PyArrayDyn, PyArrayMethods};
 use ndarray::ArrayViewD;
 
 pub mod shm;
@@ -21,10 +21,13 @@ struct Response {
     error: Option<String>,
 }
 
+/// Protocol version supported by this worker
+const PROTOCOL_VERSION: &str = "1.1";
+
 fn main() -> anyhow::Result<()> {
     // Initialize Python
     pyo3::prepare_freethreaded_python();
-    
+
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     let mut line = String::new();
@@ -58,7 +61,7 @@ fn main() -> anyhow::Result<()> {
             println!("{}", s);
             io::stdout().flush()?;
         }
-        
+
         line.clear();
     }
 
@@ -78,25 +81,45 @@ fn handle_request(req: Request) -> Response {
 
                 let sys = py.import_bound("sys").map_err(|e| e.to_string())?;
                 let path = sys.getattr("path").map_err(|e| e.to_string())?;
-                
+
                 // Add plugin directory to sys.path
                 path.call_method1("append", (plugin_dir,)).map_err(|e| e.to_string())?;
 
                 // Import the module
                 let module = py.import_bound(module_name).map_err(|e| e.to_string())?;
                 let execute_fn = module.getattr("execute").map_err(|e| e.to_string())?;
-                
+
                 // Prepare arguments
                 let py_args = PyDict::new_bound(py);
-                
+
                 // Call execute
                 let py_result = execute_fn.call1((py_args,)).map_err(|e| e.to_string())?;
-                
+
                 // Convert result to JSON
                 python_to_json(py_result).map_err(|e| e.to_string())
             }
             "ping" => {
                 Ok(serde_json::Value::String("pong".to_string()))
+            }
+            "handshake" => {
+                // Params: { "protocol_version": "...", "shm_supported": true }
+                let host_version = req.params["protocol_version"].as_str()
+                    .ok_or("Missing protocol_version")?;
+                let shm_supported = req.params["shm_supported"].as_bool().unwrap_or(false);
+
+                // Check version compatibility
+                if host_version != PROTOCOL_VERSION {
+                    return Err(format!(
+                        "Version mismatch: worker supports {}, host requested {}",
+                        PROTOCOL_VERSION, host_version
+                    ));
+                }
+
+                // Return handshake response
+                Ok(serde_json::json!({
+                    "protocol_version": PROTOCOL_VERSION,
+                    "shm_supported": shm_supported
+                }))
             }
             "load_shm" => {
                 // Params: { "shm_id": "...", "shape": [...], "dtype": "..." }
@@ -106,9 +129,27 @@ fn handle_request(req: Request) -> Response {
                 let dtype = req.params["dtype"].as_str().unwrap_or("f32");
 
                 let array = shm::map_shm_to_numpy(py, shm_id, shape, dtype).map_err(|e| e.to_string())?;
-                
+
                 // For verification, return some stats
                 let sum = array.call_method0("sum").map_err(|e| e.to_string())?;
+                python_to_json(sum).map_err(|e| e.to_string())
+            }
+            "load_data" => {
+                // Params: { "data": [...], "shape": [...] }
+                // For small data transfers via JSON-RPC
+                let data: Vec<f32> = serde_json::from_value(req.params["data"].clone())
+                    .map_err(|e| format!("Failed to parse data array: {}", e))?;
+                let shape: Vec<usize> = req.params["shape"].as_array().ok_or("Missing shape")?
+                    .iter().map(|v| v.as_u64().unwrap_or(0) as usize).collect();
+
+                // Create 1D NumPy array from data, then reshape
+                let array = numpy::PyArray1::from_vec_bound(py, data);
+                
+                // Reshape to the target shape (convert Vec to slice)
+                array.reshape(shape.as_slice()).map_err(|e: PyErr| e.to_string())?;
+
+                // Return sum for verification
+                let sum = array.call_method0("sum").map_err(|e: PyErr| e.to_string())?;
                 python_to_json(sum).map_err(|e| e.to_string())
             }
             _ => Err(format!("Unknown method: {}", req.method)),
@@ -140,7 +181,9 @@ fn python_to_json(obj: Bound<'_, PyAny>) -> PyResult<serde_json::Value> {
         return Ok(serde_json::Value::Bool(b));
     }
     if let Ok(n) = obj.extract::<f64>() {
-        return Ok(serde_json::Value::Number(serde_json::Number::from_f64(n).unwrap()));
+        return Ok(serde_json::Number::from_f64(n)
+            .map(serde_json::Value::Number)
+            .unwrap_or(serde_json::Value::Null));
     }
     // For complex types, just use a placeholder for now or convert to string
     Ok(serde_json::Value::String(obj.str()?.to_string()))
@@ -154,7 +197,7 @@ pub fn share_with_python<'py>(
 ) -> PyResult<Bound<'py, PyArrayDyn<f32>>> {
     let view = ArrayViewD::from_shape(shape, data)
         .map_err(|e: ndarray::ShapeError| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-    
+
     // Safety: The caller must ensure the data slice outlives the NumPy array
     let array = unsafe {
         PyArrayDyn::borrow_from_array_bound(&view, py.None().into_bound(py))
