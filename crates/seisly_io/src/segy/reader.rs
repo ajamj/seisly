@@ -8,7 +8,9 @@
 use giga_segy_in::{SegyFile, SegySettings};
 use std::fs::File;
 use std::path::Path;
+use std::sync::Arc;
 use thiserror::Error;
+use crate::cache::BrickCache;
 
 /// IO error type for SEG-Y operations
 #[derive(Error, Debug)]
@@ -22,6 +24,7 @@ pub enum IoError {
 /// SEG-Y volume reader
 pub struct SegyReader {
     segy: SegyFile,
+    cache: Option<BrickCache>,
 }
 
 impl SegyReader {
@@ -34,7 +37,22 @@ impl SegyReader {
         let segy = SegyFile::open(file, settings)
             .map_err(|e| IoError::ParseError(format!("Failed to parse SEG-Y file: {}", e)))?;
 
-        Ok(Self { segy })
+        Ok(Self { 
+            segy,
+            cache: Some(BrickCache::default()),
+        })
+    }
+
+    /// Set a custom cache for the reader.
+    pub fn with_cache(mut self, cache: BrickCache) -> Self {
+        self.cache = Some(cache);
+        self
+    }
+
+    /// Disable caching for this reader.
+    pub fn without_cache(mut self) -> Self {
+        self.cache = None;
+        self
     }
 
     /// Get textual header (EBCDIC/ASCII)
@@ -53,7 +71,14 @@ impl SegyReader {
     }
 
     /// Read a trace by index
-    pub fn read_trace(&self, index: usize) -> Result<Vec<f32>, IoError> {
+    pub fn read_trace(&self, index: usize) -> Result<Arc<Vec<f32>>, IoError> {
+        // Check cache first
+        if let Some(cache) = &self.cache {
+            if let Some(cached) = cache.get(index) {
+                return Ok(cached);
+            }
+        }
+
         let trace = self.segy
             .traces_iter()
             .nth(index)
@@ -64,7 +89,14 @@ impl SegyReader {
             .get_trace_data_as_f32_from_trace(&trace)
             .map_err(|e| IoError::ParseError(format!("Failed to read trace data: {}", e)))?;
 
-        Ok(data)
+        let data_arc = Arc::new(data);
+
+        // Populate cache
+        if let Some(cache) = &self.cache {
+            cache.insert(index, Arc::clone(&data_arc));
+        }
+
+        Ok(data_arc)
     }
 
     /// Get trace header at index

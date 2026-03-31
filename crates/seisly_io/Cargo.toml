@@ -11,6 +11,7 @@ serde_json.workspace = true
 memmap2 = "0.9"
 giga-segy-in.workspace = true
 giga-segy-out.workspace = true
+moka = { version = "0.12", features = ["sync"] }
 
 [dev-dependencies]
 tempfile.workspace = true
