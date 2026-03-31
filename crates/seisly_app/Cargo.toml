@@ -26,6 +26,8 @@ serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
 tempfile.workspace = true
+sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "native-tls", "transport"] }
+rfd = "0.15"
 
 [features]
 python = ["seisly_plugin/python"]
