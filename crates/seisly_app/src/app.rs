@@ -53,7 +53,6 @@ pub struct SeislyApp {
     pub(crate) velocity: VelocityState,
     pub(crate) volumetric_result: Option<f32>,
     pub(crate) wells: WellState,
-    #[allow(dead_code)]
     pub(crate) theme_manager: ThemeManager,
     #[allow(dead_code)]
     pub(crate) current_project_path: Option<std::path::PathBuf>,
@@ -609,7 +608,124 @@ impl SeislyApp {
 
 impl eframe::App for SeislyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Menu Bar - Native desktop app style
+        // Handle global shortcuts
+        crate::ui::shortcuts::handle_shortcuts(ctx, self);
+
+        // Top Ribbon - Modern toolbar
+        egui::TopBottomPanel::top("top_ribbon")
+            .exact_height(crate::ui::style::spacing::TOP_RIBBON_HEIGHT)
+            .show(ctx, |ui| {
+                ui.add_space(4.0);
+
+                // First row - App title and menu
+                ui.horizontal(|ui| {
+                    ui.heading("🛢 Seisly");
+                    ui.separator();
+
+                    // Quick access toolbar
+                    if ui.button("💾").clicked() { /* Save */ }
+                    if ui.button("↶").clicked() {
+                        self.history.undo(&mut self.interpretation);
+                    }
+                    if ui.button("↷").clicked() {
+                        self.history.redo(&mut self.interpretation);
+                    }
+
+                    ui.separator();
+
+                    // Context-aware tools
+                    if self.interpretation.active_horizon_id.is_some() {
+                        ui.label(egui::RichText::new("🌈 Horizon").color(crate::ui::style::colors::HORIZON));
+                    } else if self.interpretation.active_fault_id.is_some() {
+                        ui.label(egui::RichText::new("⚡ Fault").color(crate::ui::style::colors::FAULT));
+                    } else {
+                        ui.label("📊 Seismic");
+                    }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button(self.theme_manager.icon()).clicked() {
+                            self.theme_manager.toggle();
+                            crate::ui::style::apply_theme(ctx, self.theme_manager.current_theme);
+                        }
+                        if ui.button("❓").clicked() { /* Help */ }
+                    });
+                });
+
+                ui.add_space(4.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                // Second row - Tools
+                ui.horizontal(|ui| {
+                    // File operations
+                    ui.group(|ui| {
+                        ui.horizontal(|ui| {
+                            if ui.button("📂 New").clicked() { /* New project */ }
+                            if ui.button("📁 Open").clicked() { /* Open */ }
+                            if ui.button("💾 Save").clicked() { /* Save */ }
+                        });
+                    });
+
+                    ui.separator();
+
+                    // Interpretation tools
+                    ui.group(|ui| {
+                        ui.label("Picking:");
+                        ui.selectable_value(
+                            &mut self.interpretation.picking_mode,
+                            PickingMode::None,
+                            "⊘",
+                        );
+                        ui.selectable_value(
+                            &mut self.interpretation.picking_mode,
+                            PickingMode::Seed,
+                            "🌱",
+                        );
+                        ui.selectable_value(
+                            &mut self.interpretation.picking_mode,
+                            PickingMode::Manual,
+                            "✏️",
+                        );
+                        ui.selectable_value(
+                            &mut self.interpretation.picking_mode,
+                            PickingMode::AutoTrack,
+                            "🔄",
+                        );
+                        ui.selectable_value(
+                            &mut self.interpretation.picking_mode,
+                            PickingMode::SketchFault,
+                            "⚡",
+                        );
+                    });
+
+                    ui.separator();
+
+                    // View controls
+                    ui.group(|ui| {
+                        ui.checkbox(&mut self.velocity.is_depth_mode, "📏 Depth");
+                        if self.velocity.is_depth_mode {
+                            ui.horizontal(|ui| {
+                                ui.label("V0:");
+                                ui.add(
+                                    egui::DragValue::new(&mut self.velocity.model.v0)
+                                        .speed(100.0)
+                                        .prefix("m/s"),
+                                );
+                                ui.label("k:");
+                                ui.add(
+                                    egui::DragValue::new(&mut self.velocity.model.k)
+                                        .speed(0.01)
+                                        .prefix("1/s"),
+                                );
+                            });
+                        }
+                    });
+                });
+
+                ui.add_space(4.0);
+            });
+
+        // Menu Bar - Native desktop app style (hidden by default or triggered by Alt)
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 // File menu
@@ -710,114 +826,6 @@ impl eframe::App for SeislyApp {
         while let Some(result) = self.plugin_results.pop() {
             self.handle_plugin_result(result);
         }
-
-        // Top Ribbon - Modern toolbar
-        egui::TopBottomPanel::top("top_ribbon").show(ctx, |ui| {
-            ui.add_space(4.0);
-
-            // First row - App title and menu
-            ui.horizontal(|ui| {
-                ui.heading("🛢 Seisly");
-                ui.separator();
-
-                // Quick access toolbar
-                if ui.button("💾").clicked() { /* Save */ }
-                if ui.button("↶").clicked() {
-                    self.history.undo(&mut self.interpretation);
-                }
-                if ui.button("↷").clicked() {
-                    self.history.redo(&mut self.interpretation);
-                }
-
-                ui.separator();
-
-                // Context-aware tools
-                if self.interpretation.active_horizon_id.is_some() {
-                    ui.label("🌈 Horizon");
-                } else if self.interpretation.active_fault_id.is_some() {
-                    ui.label("⚡ Fault");
-                } else {
-                    ui.label("📊 Seismic");
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button("❓").clicked() { /* Help */ }
-                });
-            });
-
-            ui.add_space(4.0);
-            ui.separator();
-            ui.add_space(4.0);
-
-            // Second row - Tools
-            ui.horizontal(|ui| {
-                // File operations
-                ui.group(|ui| {
-                    ui.horizontal(|ui| {
-                        if ui.button("📂 New").clicked() { /* New project */ }
-                        if ui.button("📁 Open").clicked() { /* Open */ }
-                        if ui.button("💾 Save").clicked() { /* Save */ }
-                    });
-                });
-
-                ui.separator();
-
-                // Interpretation tools
-                ui.group(|ui| {
-                    ui.label("Picking:");
-                    ui.selectable_value(
-                        &mut self.interpretation.picking_mode,
-                        PickingMode::None,
-                        "⊘",
-                    );
-                    ui.selectable_value(
-                        &mut self.interpretation.picking_mode,
-                        PickingMode::Seed,
-                        "🌱",
-                    );
-                    ui.selectable_value(
-                        &mut self.interpretation.picking_mode,
-                        PickingMode::Manual,
-                        "✏️",
-                    );
-                    ui.selectable_value(
-                        &mut self.interpretation.picking_mode,
-                        PickingMode::AutoTrack,
-                        "🔄",
-                    );
-                    ui.selectable_value(
-                        &mut self.interpretation.picking_mode,
-                        PickingMode::SketchFault,
-                        "⚡",
-                    );
-                });
-
-                ui.separator();
-
-                // View controls
-                ui.group(|ui| {
-                    ui.checkbox(&mut self.velocity.is_depth_mode, "📏 Depth");
-                    if self.velocity.is_depth_mode {
-                        ui.horizontal(|ui| {
-                            ui.label("V0:");
-                            ui.add(
-                                egui::DragValue::new(&mut self.velocity.model.v0)
-                                    .speed(100.0)
-                                    .prefix("m/s"),
-                            );
-                            ui.label("k:");
-                            ui.add(
-                                egui::DragValue::new(&mut self.velocity.model.k)
-                                    .speed(0.01)
-                                    .prefix("1/s"),
-                            );
-                        });
-                    }
-                });
-            });
-
-            ui.add_space(4.0);
-        });
 
         // Status Bar
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
