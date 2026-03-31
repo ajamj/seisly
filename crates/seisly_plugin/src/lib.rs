@@ -7,9 +7,13 @@ pub mod manager;
 
 #[cfg(feature = "python")]
 pub mod python;
+#[cfg(feature = "python")]
+pub mod interpreter;
 
 pub use api::{Plugin, PluginContext, PluginCommand, PluginError, Result};
 pub use manager::PluginManager;
 
 #[cfg(feature = "python")]
 pub use python::*;
+#[cfg(feature = "python")]
+pub use interpreter::*;

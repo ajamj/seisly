@@ -1,6 +1,6 @@
 //! Plugin System Tests
 
-use seisly_plugin::{PluginManager, Plugin, PluginContext, PluginCommand, Result};
+use seisly_plugin::{PluginManager, Plugin, PluginContext, PluginCommand, Result, PluginError};
 use serde_json::Value;
 
 struct TestPlugin;
@@ -21,7 +21,7 @@ impl Plugin for TestPlugin {
         if cmd == "test" {
             Ok(Value::String("success".to_string()))
         } else {
-            Err(sf_plugin::api::PluginError::ExecutionError("Unknown command".to_string()))
+            Err(PluginError::ExecutionError("Unknown command".to_string()))
         }
     }
 }
@@ -51,7 +51,7 @@ fn test_plugin_not_found() {
     let result = manager.execute("NonExistent", "test", Value::Null);
     assert!(result.is_err());
     match result {
-        Err(sf_plugin::api::PluginError::NotFound(_)) => (),
+        Err(PluginError::NotFound(_)) => (),
         _ => panic!("Expected NotFound error"),
     }
 }
