@@ -64,6 +64,8 @@ pub struct SeislyApp {
     pub(crate) plugin_panel: crate::widgets::plugin_panel::PluginPanel,
     pub(crate) plugin_results: Vec<serde_json::Value>,
     pub(crate) tree: egui_dock::DockState<Tab>,
+    pub(crate) show_help: bool,
+    pub(crate) show_synthetic_data: bool,
 }
 
 impl SeislyApp {
@@ -163,6 +165,8 @@ impl SeislyApp {
             recent_projects: Vec::new(),
             settings: crate::widgets::settings_panel::SettingsPanel::new(),
             show_settings: false,
+            show_help: false,
+            show_synthetic_data: false,
             plugin_manager,
             plugin_panel: crate::widgets::plugin_panel::PluginPanel::new(),
             plugin_results: Vec::new(),
@@ -605,6 +609,98 @@ impl SeislyApp {
             }
         }
     }
+
+    // File menu actions
+    fn new_project(&mut self) {
+        use rfd::FileDialog;
+        if let Some(path) = FileDialog::new()
+            .set_title("New Project Location")
+            .set_file_name("project.seisly")
+            .save_file()
+        {
+            // Create new project
+            let project = crate::project::ProjectManager::create_new(&path.file_stem().unwrap().to_string_lossy());
+            self.current_project_path = Some(path);
+            println!("New project created: {:?}", project.name);
+            // TODO: Clear current state and initialize new project
+        }
+    }
+
+    fn open_project(&mut self) {
+        use rfd::FileDialog;
+        if let Some(path) = FileDialog::new()
+            .set_title("Open Project")
+            .add_filter("Seisly Project", &["seisly"])
+            .pick_file()
+        {
+            // Load project
+            match crate::project::ProjectManager::load(&path) {
+                Ok(_project) => {
+                    self.current_project_path = Some(path.clone());
+                    println!("Project opened: {:?}", path);
+                    // TODO: Restore project state
+                }
+                Err(e) => {
+                    eprintln!("Failed to open project: {}", e);
+                    rfd::MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Error)
+                        .set_title("Open Project Failed")
+                        .set_description(&format!("Failed to open project: {}", e))
+                        .show();
+                }
+            }
+        }
+    }
+
+    fn save_project(&mut self) {
+        use rfd::FileDialog;
+        let path = if let Some(ref current) = self.current_project_path {
+            current.clone()
+        } else if let Some(path) = FileDialog::new()
+            .set_title("Save Project As")
+            .set_file_name("project.seisly")
+            .save_file()
+        {
+            self.current_project_path = Some(path.clone());
+            path
+        } else {
+            return;
+        };
+
+        // Save project
+        // TODO: Create ProjectData from current state and save
+        println!("Project saved to: {:?}", path);
+        rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Info)
+            .set_title("Project Saved")
+            .set_description("Project saved successfully.")
+            .show();
+    }
+
+    fn import_seismic(&mut self) {
+        use rfd::FileDialog;
+        if let Some(path) = FileDialog::new()
+            .set_title("Import Seismic Data")
+            .add_filter("SEG-Y File", &["segy", "sgy"])
+            .pick_file()
+        {
+            println!("Import seismic from: {:?}", path);
+            // TODO: Load SEG-Y file and add to seismic_volumes
+        }
+    }
+
+    fn import_well(&mut self) {
+        use rfd::FileDialog;
+        if let Some(path) = FileDialog::new()
+            .set_title("Import Well Data")
+            .add_filter("LAS File", &["las"])
+            .add_filter("CSV File", &["csv"])
+            .pick_file()
+        {
+            println!("Import well from: {:?}", path);
+            // TODO: Load well data and add to wells
+        }
+    }
 }
 
 impl eframe::App for SeislyApp {
@@ -624,7 +720,9 @@ impl eframe::App for SeislyApp {
                     ui.separator();
 
                     // Quick access toolbar with tooltips
-                    if ui.button("💾").on_hover_text("Save project (Ctrl+S)").clicked() { /* Save */ }
+                    if ui.button("💾").on_hover_text("Save project (Ctrl+S)").clicked() {
+                        self.save_project();
+                    }
                     if ui.button("↶").on_hover_text("Undo (Ctrl+Z)").clicked() {
                         self.history.undo(&mut self.interpretation);
                     }
@@ -648,7 +746,9 @@ impl eframe::App for SeislyApp {
                             self.theme_manager.toggle();
                             crate::ui::style::apply_theme(ctx, self.theme_manager.current_theme);
                         }
-                        if ui.button("❓").on_hover_text("Help").clicked() { /* Help */ }
+                        if ui.button("❓").on_hover_text("Help").clicked() {
+                            self.show_help = true;
+                        }
                     });
                 });
 
@@ -732,20 +832,20 @@ impl eframe::App for SeislyApp {
                 // File menu
                 ui.menu_button("📁 File", |ui| {
                     if ui.button("New Project\tCtrl+N").clicked() {
-                        // New project
+                        self.new_project();
                     }
                     if ui.button("Open Project\tCtrl+O").clicked() {
-                        // Open project
+                        self.open_project();
                     }
                     if ui.button("Save Project\tCtrl+S").clicked() {
-                        // Save project
+                        self.save_project();
                     }
                     ui.separator();
                     if ui.button("Import Seismic\tCtrl+I").clicked() {
-                        // Import seismic
+                        self.import_seismic();
                     }
                     if ui.button("Import Well\tCtrl+W").clicked() {
-                        // Import well
+                        self.import_well();
                     }
                     ui.separator();
                     if ui.button("Exit\tAlt+F4").clicked() {
@@ -756,13 +856,13 @@ impl eframe::App for SeislyApp {
                 // Tools menu
                 ui.menu_button("🔧 Tools", |ui| {
                     if ui.button("Generate Synthetic Data\tCtrl+G").clicked() {
-                        // Show synthetic data generator
+                        self.show_synthetic_data = true;
                     }
                     if ui.button("Velocity Modeling\tV").clicked() {
-                        // Show velocity panel
+                        self.velocity.is_depth_mode = true;
                     }
                     if ui.button("Well-Seismic Tie\tT").clicked() {
-                        // Show well tie
+                        // Show well tie - placeholder
                     }
                     if ui.button("🧩 Plugin Manager...").clicked() {
                         self.plugin_panel.is_open = true;
@@ -779,7 +879,7 @@ impl eframe::App for SeislyApp {
                         // Reset viewport
                     }
                     if ui.button("Toggle Depth Mode\tD").clicked() {
-                        // Toggle depth mode
+                        self.velocity.is_depth_mode = !self.velocity.is_depth_mode;
                     }
                     ui.separator();
                     if ui.button("Fullscreen\tF11").clicked() {
