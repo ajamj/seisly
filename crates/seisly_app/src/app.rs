@@ -4,7 +4,8 @@ use uuid::Uuid;
 use crate::interpretation::{
     Fault, HistoryManager, Horizon, InterpretationState, PickingMode, VelocityState, WellState,
 };
-use crate::ui_styles::{self, ThemeManager};
+use crate::ui::style::{self, ThemeManager};
+use crate::ui::layout::{Tab, SeislyTabViewer};
 use crate::widgets::crossplot::CrossPlotWidget;
 use crate::widgets::fault_properties_panel::FaultPropertiesPanel;
 use crate::widgets::horizon_properties_panel::HorizonPropertiesPanel;
@@ -33,42 +34,40 @@ impl Default for VisualSettings {
     }
 }
 
-pub struct StrataForgeApp {
+pub struct SeislyApp {
     #[allow(dead_code)]
     name: String,
-    viewport: ViewportWidget,
+    pub(crate) viewport: ViewportWidget,
+    pub(crate) crossplot: CrossPlotWidget,
     #[allow(dead_code)]
-    crossplot: CrossPlotWidget,
+    pub(crate) fault_properties: FaultPropertiesPanel,
     #[allow(dead_code)]
-    fault_properties: FaultPropertiesPanel,
+    pub(crate) horizon_properties: HorizonPropertiesPanel,
+    pub(crate) velocity_panel: VelocityPanel,
+    pub(crate) well_panel: WellPanel,
+    pub(crate) interpretation: InterpretationState,
+    pub(crate) history: HistoryManager,
+    pub(crate) visuals: VisualSettings,
+    pub(crate) volume: Option<SeismicVolume>,
+    pub(crate) seismic_volumes: Vec<SeismicVolumeEntry>,
+    pub(crate) velocity: VelocityState,
+    pub(crate) volumetric_result: Option<f32>,
+    pub(crate) wells: WellState,
     #[allow(dead_code)]
-    horizon_properties: HorizonPropertiesPanel,
+    pub(crate) theme_manager: ThemeManager,
     #[allow(dead_code)]
-    velocity_panel: VelocityPanel,
+    pub(crate) current_project_path: Option<std::path::PathBuf>,
     #[allow(dead_code)]
-    well_panel: WellPanel,
-    interpretation: InterpretationState,
-    history: HistoryManager,
-    visuals: VisualSettings,
-    volume: Option<SeismicVolume>,
-    seismic_volumes: Vec<SeismicVolumeEntry>,
-    velocity: VelocityState,
-    volumetric_result: Option<f32>,
-    wells: WellState,
-    #[allow(dead_code)]
-    theme_manager: ThemeManager,
-    #[allow(dead_code)]
-    current_project_path: Option<std::path::PathBuf>,
-    #[allow(dead_code)]
-    recent_projects: Vec<std::path::PathBuf>,
-    settings: crate::widgets::settings_panel::SettingsPanel,
-    show_settings: bool,
-    plugin_manager: PluginManager,
-    plugin_panel: crate::widgets::plugin_panel::PluginPanel,
-    plugin_results: Vec<serde_json::Value>,
+    pub(crate) recent_projects: Vec<std::path::PathBuf>,
+    pub(crate) settings: crate::widgets::settings_panel::SettingsPanel,
+    pub(crate) show_settings: bool,
+    pub(crate) plugin_manager: PluginManager,
+    pub(crate) plugin_panel: crate::widgets::plugin_panel::PluginPanel,
+    pub(crate) plugin_results: Vec<serde_json::Value>,
+    pub(crate) tree: egui_dock::DockState<Tab>,
 }
 
-impl StrataForgeApp {
+impl SeislyApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let theme_manager = ThemeManager::new();
         
@@ -76,7 +75,7 @@ impl StrataForgeApp {
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
         // Apply theme
-        ui_styles::apply_theme(&cc.egui_ctx, theme_manager.current_theme);
+        style::apply_theme(&cc.egui_ctx, theme_manager.current_theme);
         
         let mut interpretation = InterpretationState::new();
 
@@ -138,6 +137,12 @@ impl StrataForgeApp {
         // Discovery on startup
         let _ = plugin_manager.discover(std::path::Path::new("plugins"));
 
+        // Setup Dock Tree
+        let tree = cc.storage
+            .and_then(|s| s.get_string("seisly_dock_tree"))
+            .and_then(|json| serde_json::from_str(&json).ok())
+            .unwrap_or_else(Self::default_tree);
+
         Self {
             name: "MyField".to_owned(),
             viewport,
@@ -162,8 +167,302 @@ impl StrataForgeApp {
             plugin_manager,
             plugin_panel: crate::widgets::plugin_panel::PluginPanel::new(),
             plugin_results: Vec::new(),
+            tree,
         }
     }
+
+    fn default_tree() -> egui_dock::DockState<Tab> {
+        let mut tree = egui_dock::DockState::new(vec![Tab::Viewport]);
+        let [_left, main] = tree.main_surface_mut().split_left(
+            egui_dock::NodeIndex::root(),
+            0.2,
+            vec![Tab::ProjectExplorer],
+        );
+        let [_main_center, _right] =
+            tree.main_surface_mut()
+                .split_right(main, 0.75, vec![Tab::Properties]);
+        let [_main_center_sub, _bottom] =
+            tree.main_surface_mut()
+                .split_below(main, 0.7, vec![Tab::WellLogs]);
+
+        // Add more default tabs
+        tree.main_surface_mut().push_to_focused_leaf(Tab::CrossPlot);
+        tree
+    }
+
+
+
+    pub fn render_viewport(&mut self, ui: &mut egui::Ui) {
+        self.viewport.ui(
+            ui,
+            &mut self.interpretation,
+            &self.velocity,
+            self.volume.as_ref(),
+        );
+    }
+
+    pub fn render_project_explorer(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Project Data");
+        ui.separator();
+
+        ui.collapsing("Seismic Volumes", |ui| {
+            for vol in &mut self.seismic_volumes {
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut vol.is_visible, "");
+                    ui.label(&vol.name);
+
+                    ui.separator();
+                    ui.label("RGB:");
+                    ui.radio_value(&mut vol.channel_assignment, 1, "R");
+                    ui.radio_value(&mut vol.channel_assignment, 2, "G");
+                    ui.radio_value(&mut vol.channel_assignment, 3, "B");
+                    ui.radio_value(&mut vol.channel_assignment, 0, "None");
+                });
+            }
+        });
+        ui.collapsing("Horizons", |ui| {
+            if ui.button("Add Horizon").clicked() {
+                let name = format!("Horizon {}", self.interpretation.horizons.len() + 1);
+                self.interpretation
+                    .add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
+            }
+            ui.separator();
+
+            let modifier = ui.input(|i| i.modifiers.command || i.modifiers.shift);
+
+            for horizon in &mut self.interpretation.horizons {
+                ui.horizontal(|ui| {
+                    let is_active = self.interpretation.active_horizon_id == Some(horizon.id);
+                    let is_selected = self
+                        .interpretation
+                        .selected_horizon_ids
+                        .contains(&horizon.id);
+
+                    let response = ui.selectable_label(is_active || is_selected, &horizon.name);
+                    if response.clicked() {
+                        if modifier {
+                            if is_selected {
+                                self.interpretation
+                                    .selected_horizon_ids
+                                    .retain(|&id| id != horizon.id);
+                            } else {
+                                self.interpretation.selected_horizon_ids.push(horizon.id);
+                            }
+                        } else {
+                            self.interpretation.active_horizon_id = Some(horizon.id);
+                            self.interpretation.selected_horizon_ids = vec![horizon.id];
+                        }
+                    }
+                    ui.checkbox(&mut horizon.is_visible, "");
+                    ui.label(format!("({} picks)", horizon.picks.len()));
+                });
+            }
+        });
+
+        ui.collapsing("Faults", |ui| {
+            if ui.button("Add Fault").clicked() {
+                let name = format!("Fault {}", self.interpretation.faults.len() + 1);
+                self.interpretation
+                    .add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
+            }
+            ui.separator();
+
+            let modifier = ui.input(|i| i.modifiers.command || i.modifiers.shift);
+
+            for fault in &mut self.interpretation.faults {
+                ui.horizontal(|ui| {
+                    let is_active = self.interpretation.active_fault_id == Some(fault.id);
+                    let is_selected =
+                        self.interpretation.selected_fault_ids.contains(&fault.id);
+
+                    let response = ui.selectable_label(is_active || is_selected, &fault.name);
+                    if response.clicked() {
+                        if modifier {
+                            if is_selected {
+                                self.interpretation
+                                    .selected_fault_ids
+                                    .retain(|&id| id != fault.id);
+                            } else {
+                                self.interpretation.selected_fault_ids.push(fault.id);
+                            }
+                        } else {
+                            self.interpretation.active_fault_id = Some(fault.id);
+                            self.interpretation.selected_fault_ids = vec![fault.id];
+                        }
+                    }
+                    ui.checkbox(&mut fault.is_visible, "");
+                    ui.label(format!("({} sticks)", fault.sticks.len()));
+                });
+            }
+        });
+
+        // Wells section - integrated with WellPanel
+        self.well_panel.ui(ui, &mut self.wells);
+    }
+
+    pub fn render_properties(&mut self, ui: &mut egui::Ui) {
+        ui.add_space(8.0);
+        ui.heading("📊 Properties");
+        ui.add_space(8.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        // Context-aware properties
+        if let Some(horizon) = self.interpretation.active_horizon() {
+            ui.collapsing("🌈 Horizon Properties", |ui| {
+                ui.label(format!("Name: {}", horizon.name));
+                ui.horizontal(|ui| {
+                    ui.label("Color:");
+                    let color = egui::Color32::from_rgba_unmultiplied(
+                        (horizon.color[0] * 255.0) as u8,
+                        (horizon.color[1] * 255.0) as u8,
+                        (horizon.color[2] * 255.0) as u8,
+                        255,
+                    );
+                    let color_rect =
+                        ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
+                    ui.painter().rect_filled(color_rect.rect, 4.0, color);
+                });
+                ui.label(format!("Picks: {}", horizon.picks.len()));
+                ui.label(format!(
+                    "Visible: {}",
+                    if horizon.is_visible { "Yes" } else { "No" }
+                ));
+
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("📤 Export XYZ").clicked() {
+                        self.export_active_horizon("xyz");
+                    }
+                    if ui.button("📤 JSON").clicked() {
+                        self.export_active_horizon("json");
+                    }
+                });
+            });
+        } else if let Some(fault) = self.interpretation.active_fault() {
+            ui.collapsing("⚡ Fault Properties", |ui| {
+                ui.label(format!("Name: {}", fault.name));
+                ui.horizontal(|ui| {
+                    ui.label("Color:");
+                    let color = egui::Color32::from_rgba_unmultiplied(
+                        (fault.color[0] * 255.0) as u8,
+                        (fault.color[1] * 255.0) as u8,
+                        (fault.color[2] * 255.0) as u8,
+                        255,
+                    );
+                    let color_rect =
+                        ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
+                    ui.painter().rect_filled(color_rect.rect, 4.0, color);
+                });
+                ui.label(format!("Sticks: {}", fault.sticks.len()));
+                ui.label(format!(
+                    "Visible: {}",
+                    if fault.is_visible { "Yes" } else { "No" }
+                ));
+            });
+        } else {
+            ui.label("Select a horizon or fault to view properties");
+        }
+
+        ui.add_space(16.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        // Visual Settings
+        ui.collapsing("🎨 Visual Settings", |ui| {
+            ui.add(egui::Slider::new(&mut self.visuals.gain, 0.1..=10.0).text("Gain"));
+            ui.add(egui::Slider::new(&mut self.visuals.clip, 0.0..=1.0).text("Clip"));
+            ui.add(egui::Slider::new(&mut self.visuals.opacity, 0.0..=1.0).text("Opacity"));
+
+            ui.separator();
+            ui.label("Colormap:");
+            egui::ComboBox::from_label("")
+                .selected_text(&self.visuals.colormap)
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut self.visuals.colormap,
+                        "Seismic".to_string(),
+                        "🌈 Seismic",
+                    );
+                    ui.selectable_value(
+                        &mut self.visuals.colormap,
+                        "Viridis".to_string(),
+                        "🟢 Viridis",
+                    );
+                    ui.selectable_value(
+                        &mut self.visuals.colormap,
+                        "Magma".to_string(),
+                        "🔴 Magma",
+                    );
+                });
+        });
+
+        ui.add_space(16.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        // Volumetrics
+        ui.collapsing("📐 Volumetrics", |ui| {
+            if self.interpretation.selected_horizon_ids.len() >= 2 {
+                if ui.button("Calculate Volume").clicked() {
+                    self.calculate_volumetrics();
+                }
+                if let Some(vol) = self.volumetric_result {
+                    ui.label(format!("Volume: {:.2} m³", vol));
+                }
+            } else {
+                ui.label("Select 2 horizons");
+            }
+        });
+    }
+
+    pub fn render_well_logs(&mut self, ui: &mut egui::Ui) {
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.heading("📊 Well Logs & Crossplots");
+        });
+        ui.add_space(4.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        if !self.wells.wells.is_empty() {
+            ui.horizontal(|ui| {
+                ui.label("Well:");
+                for well in &self.wells.wells {
+                    if ui.selectable_label(false, &well.name).clicked() {
+                        // Select well
+                    }
+                }
+
+                ui.separator();
+                ui.label("Log:");
+                let _ = ui.selectable_label(true, "GR");
+                let _ = ui.selectable_label(false, "DT");
+                let _ = ui.selectable_label(false, "RHOB");
+            });
+
+            ui.add_space(8.0);
+
+            // Placeholder for log plot
+            ui.label("📈 Log plot area - to be implemented");
+            ui.label("Select a well and log to display");
+        } else {
+            ui.label("No wells loaded. Click '+ Add Well' in the Project Explorer.");
+        }
+    }
+
+    pub fn render_plugins(&mut self, ui: &mut egui::Ui) {
+        self.plugin_panel.ui(ui, &mut self.plugin_manager, &mut self.plugin_results);
+    }
+
+    pub fn render_crossplot(&mut self, ui: &mut egui::Ui) {
+        self.crossplot.ui(ui, &[]);
+    }
+
+    pub fn render_velocity(&mut self, ui: &mut egui::Ui) {
+        self.velocity_panel.ui(ui, &mut self.velocity);
+    }
+
 
     fn calculate_volumetrics(&mut self) {
         if self.interpretation.selected_horizon_ids.len() < 2 {
@@ -308,7 +607,7 @@ impl StrataForgeApp {
     }
 }
 
-impl eframe::App for StrataForgeApp {
+impl eframe::App for SeislyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Menu Bar - Native desktop app style
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
@@ -380,7 +679,7 @@ impl eframe::App for StrataForgeApp {
                         // Check updates
                     }
                     ui.separator();
-                    if ui.button("About StrataForge").clicked() {
+                    if ui.button("About Seisly").clicked() {
                         // Show about dialog
                     }
                 });
@@ -418,7 +717,7 @@ impl eframe::App for StrataForgeApp {
 
             // First row - App title and menu
             ui.horizontal(|ui| {
-                ui.heading("🛢 StrataForge");
+                ui.heading("🛢 Seisly");
                 ui.separator();
 
                 // Quick access toolbar
@@ -520,367 +819,6 @@ impl eframe::App for StrataForgeApp {
             ui.add_space(4.0);
         });
 
-        egui::SidePanel::left("left_panel").show(ctx, |ui| {
-            ui.heading("Project Data");
-            ui.separator();
-
-            ui.collapsing("Seismic Volumes", |ui| {
-                for vol in &mut self.seismic_volumes {
-                    ui.horizontal(|ui| {
-                        ui.checkbox(&mut vol.is_visible, "");
-                        ui.label(&vol.name);
-
-                        ui.separator();
-                        ui.label("RGB:");
-                        ui.radio_value(&mut vol.channel_assignment, 1, "R");
-                        ui.radio_value(&mut vol.channel_assignment, 2, "G");
-                        ui.radio_value(&mut vol.channel_assignment, 3, "B");
-                        ui.radio_value(&mut vol.channel_assignment, 0, "None");
-                    });
-                }
-            });
-            ui.collapsing("Horizons", |ui| {
-                if ui.button("Add Horizon").clicked() {
-                    let name = format!("Horizon {}", self.interpretation.horizons.len() + 1);
-                    self.interpretation
-                        .add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
-                }
-                ui.separator();
-
-                let modifier = ui.input(|i| i.modifiers.command || i.modifiers.shift);
-
-                for horizon in &mut self.interpretation.horizons {
-                    ui.horizontal(|ui| {
-                        let is_active = self.interpretation.active_horizon_id == Some(horizon.id);
-                        let is_selected = self
-                            .interpretation
-                            .selected_horizon_ids
-                            .contains(&horizon.id);
-
-                        let response = ui.selectable_label(is_active || is_selected, &horizon.name);
-                        if response.clicked() {
-                            if modifier {
-                                if is_selected {
-                                    self.interpretation
-                                        .selected_horizon_ids
-                                        .retain(|&id| id != horizon.id);
-                                } else {
-                                    self.interpretation.selected_horizon_ids.push(horizon.id);
-                                }
-                            } else {
-                                self.interpretation.active_horizon_id = Some(horizon.id);
-                                self.interpretation.selected_horizon_ids = vec![horizon.id];
-                            }
-                        }
-                        ui.checkbox(&mut horizon.is_visible, "");
-                        ui.label(format!("({} picks)", horizon.picks.len()));
-                    });
-                }
-            });
-
-            ui.collapsing("Faults", |ui| {
-                if ui.button("Add Fault").clicked() {
-                    let name = format!("Fault {}", self.interpretation.faults.len() + 1);
-                    self.interpretation
-                        .add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
-                }
-                ui.separator();
-
-                let modifier = ui.input(|i| i.modifiers.command || i.modifiers.shift);
-
-                for fault in &mut self.interpretation.faults {
-                    ui.horizontal(|ui| {
-                        let is_active = self.interpretation.active_fault_id == Some(fault.id);
-                        let is_selected =
-                            self.interpretation.selected_fault_ids.contains(&fault.id);
-
-                        let response = ui.selectable_label(is_active || is_selected, &fault.name);
-                        if response.clicked() {
-                            if modifier {
-                                if is_selected {
-                                    self.interpretation
-                                        .selected_fault_ids
-                                        .retain(|&id| id != fault.id);
-                                } else {
-                                    self.interpretation.selected_fault_ids.push(fault.id);
-                                }
-                            } else {
-                                self.interpretation.active_fault_id = Some(fault.id);
-                                self.interpretation.selected_fault_ids = vec![fault.id];
-                            }
-                        }
-                        ui.checkbox(&mut fault.is_visible, "");
-                        ui.label(format!("({} sticks)", fault.sticks.len()));
-                    });
-                }
-            });
-
-            // Wells section - integrated with WellPanel
-            self.well_panel.ui(ui, &mut self.wells);
-        });
-
-        // Right Panel - Properties & Analysis
-        egui::SidePanel::right("right_panel")
-            .min_width(250.0)
-            .max_width(400.0)
-            .resizable(true)
-            .show(ctx, |ui| {
-                ui.add_space(8.0);
-                ui.heading("📊 Properties");
-                ui.add_space(8.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                // Context-aware properties
-                if let Some(horizon) = self.interpretation.active_horizon() {
-                    ui.collapsing("🌈 Horizon Properties", |ui| {
-                        ui.label(format!("Name: {}", horizon.name));
-                        ui.horizontal(|ui| {
-                            ui.label("Color:");
-                            let color = egui::Color32::from_rgba_unmultiplied(
-                                (horizon.color[0] * 255.0) as u8,
-                                (horizon.color[1] * 255.0) as u8,
-                                (horizon.color[2] * 255.0) as u8,
-                                255,
-                            );
-                            let color_rect =
-                                ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
-                            ui.painter().rect_filled(color_rect.rect, 4.0, color);
-                        });
-                        ui.label(format!("Picks: {}", horizon.picks.len()));
-                        ui.label(format!(
-                            "Visible: {}",
-                            if horizon.is_visible { "Yes" } else { "No" }
-                        ));
-
-                        ui.separator();
-                        ui.horizontal(|ui| {
-                            if ui.button("📤 Export XYZ").clicked() {
-                                self.export_active_horizon("xyz");
-                            }
-                            if ui.button("📤 JSON").clicked() {
-                                self.export_active_horizon("json");
-                            }
-                        });
-                    });
-                } else if let Some(fault) = self.interpretation.active_fault() {
-                    ui.collapsing("⚡ Fault Properties", |ui| {
-                        ui.label(format!("Name: {}", fault.name));
-                        ui.horizontal(|ui| {
-                            ui.label("Color:");
-                            let color = egui::Color32::from_rgba_unmultiplied(
-                                (fault.color[0] * 255.0) as u8,
-                                (fault.color[1] * 255.0) as u8,
-                                (fault.color[2] * 255.0) as u8,
-                                255,
-                            );
-                            let color_rect =
-                                ui.allocate_response(egui::vec2(24.0, 24.0), egui::Sense::click());
-                            ui.painter().rect_filled(color_rect.rect, 4.0, color);
-                        });
-                        ui.label(format!("Sticks: {}", fault.sticks.len()));
-                        ui.label(format!(
-                            "Visible: {}",
-                            if fault.is_visible { "Yes" } else { "No" }
-                        ));
-                    });
-                } else {
-                    ui.label("Select a horizon or fault to view properties");
-                }
-
-                ui.add_space(16.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                // Velocity Model
-                ui.collapsing("📏 Velocity Model", |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("Mode:");
-                        ui.checkbox(&mut self.velocity.is_depth_mode, "Depth");
-                    });
-                    if self.velocity.is_depth_mode {
-                        ui.add_space(8.0);
-                        ui.horizontal(|ui| {
-                            ui.label("V0:");
-                            ui.add(
-                                egui::DragValue::new(&mut self.velocity.model.v0)
-                                    .speed(100.0)
-                                    .prefix("m/s"),
-                            );
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("k:");
-                            ui.add(
-                                egui::DragValue::new(&mut self.velocity.model.k)
-                                    .speed(0.01)
-                                    .prefix("1/s"),
-                            );
-                        });
-
-                        ui.add_space(8.0);
-                        ui.separator();
-                        ui.label("Velocity Preview:");
-
-                        egui::Grid::new("velocity_preview")
-                            .num_columns(2)
-                            .spacing([40.0, 4.0])
-                            .striped(true)
-                            .show(ui, |ui| {
-                                ui.label("Depth (m)");
-                                ui.label("Velocity (m/s)");
-                                ui.end_row();
-
-                                let depths = [0.0, 500.0, 1000.0, 2000.0];
-                                for depth in depths {
-                                    let velocity =
-                                        self.velocity.model.v0 + self.velocity.model.k * depth;
-                                    ui.label(format!("{:.0}", depth));
-                                    ui.label(format!("{:.0}", velocity));
-                                    ui.end_row();
-                                }
-                            });
-                    }
-                });
-
-                ui.add_space(16.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                // Visual Settings
-                ui.collapsing("🎨 Visual Settings", |ui| {
-                    ui.add(egui::Slider::new(&mut self.visuals.gain, 0.1..=10.0).text("Gain"));
-                    ui.add(egui::Slider::new(&mut self.visuals.clip, 0.0..=1.0).text("Clip"));
-                    ui.add(egui::Slider::new(&mut self.visuals.opacity, 0.0..=1.0).text("Opacity"));
-
-                    ui.separator();
-                    ui.label("Colormap:");
-                    egui::ComboBox::from_label("")
-                        .selected_text(&self.visuals.colormap)
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(
-                                &mut self.visuals.colormap,
-                                "Seismic".to_string(),
-                                "🌈 Seismic",
-                            );
-                            ui.selectable_value(
-                                &mut self.visuals.colormap,
-                                "Viridis".to_string(),
-                                "🟢 Viridis",
-                            );
-                            ui.selectable_value(
-                                &mut self.visuals.colormap,
-                                "Magma".to_string(),
-                                "🔴 Magma",
-                            );
-                        });
-                });
-
-                ui.add_space(16.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                // Volumetrics
-                ui.collapsing("📐 Volumetrics", |ui| {
-                    if self.interpretation.selected_horizon_ids.len() >= 2 {
-                        if ui.button("Calculate Volume").clicked() {
-                            self.calculate_volumetrics();
-                        }
-                        if let Some(vol) = self.volumetric_result {
-                            ui.label(format!("Volume: {:.2} m³", vol));
-                        }
-                    } else {
-                        ui.label("Select 2 horizons");
-                    }
-                });
-
-                ui.add_space(16.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                // Wells (quick access)
-                ui.collapsing("🛢 Wells", |ui| {
-                    for well in &self.wells.wells {
-                        ui.horizontal(|ui| {
-                            ui.checkbox(&mut well.is_visible.clone(), "");
-                            ui.label(&well.name);
-                        });
-                    }
-                    if ui.button("+ Add Well").clicked() {
-                        // Demo well creation
-                        use seisly_core::domain::well::Well;
-                        let mut well = Well::new(
-                            "New Well".to_string(),
-                            "NW-1".to_string(),
-                            300000.0,
-                            600000.0,
-                            75.0,
-                        );
-                        well.add_top(
-                            "Top Sand".to_string(),
-                            1200.0,
-                            "TOP".to_string(),
-                            [1.0, 0.8, 0.0, 1.0],
-                        );
-                        self.wells.add_well(well);
-                    }
-                });
-            });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.viewport.ui(
-                ui,
-                &mut self.interpretation,
-                &self.velocity,
-                self.volume.as_ref(),
-            );
-        });
-
-        // Bottom Panel - Well Logs (collapsible)
-        egui::TopBottomPanel::bottom("bottom_panel")
-            .min_height(100.0)
-            .max_height(300.0)
-            .resizable(true)
-            .show(ctx, |ui| {
-                ui.add_space(4.0);
-                ui.horizontal(|ui| {
-                    ui.heading("📊 Well Logs & Crossplots");
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("▼").clicked() {
-                            // Could toggle collapse here
-                        }
-                    });
-                });
-                ui.add_space(4.0);
-                ui.separator();
-                ui.add_space(8.0);
-
-                if !self.wells.wells.is_empty() {
-                    ui.horizontal(|ui| {
-                        ui.label("Well:");
-                        // Well selector dropdown could go here
-                        for well in &self.wells.wells {
-                            if ui.selectable_label(false, &well.name).clicked() {
-                                // Select well
-                            }
-                        }
-
-                        ui.separator();
-                        ui.label("Log:");
-                        let _ = ui.selectable_label(true, "GR");
-                        let _ = ui.selectable_label(false, "DT");
-                        let _ = ui.selectable_label(false, "RHOB");
-                    });
-
-                    ui.add_space(8.0);
-
-                    // Placeholder for log plot
-                    ui.label("📈 Log plot area - to be implemented");
-                    ui.label("Select a well and log to display");
-                } else {
-                    ui.label("No wells loaded. Click '+ Add Well' in the left panel.");
-                }
-            });
-
         // Status Bar
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -909,5 +847,21 @@ impl eframe::App for StrataForgeApp {
                 });
             });
         });
+
+        // Central Dock Area
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let mut tree = std::mem::replace(&mut self.tree, egui_dock::DockState::new(vec![]));
+            let mut viewer = SeislyTabViewer { app: self };
+            egui_dock::DockArea::new(&mut tree)
+                .style(egui_dock::Style::from_egui(ui.style()))
+                .show_inside(ui, &mut viewer);
+            self.tree = tree;
+        });
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        if let Ok(json) = serde_json::to_string(&self.tree) {
+            storage.set_string("seisly_dock_tree", json);
+        }
     }
 }
