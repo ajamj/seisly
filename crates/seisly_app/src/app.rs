@@ -442,9 +442,9 @@ impl SeislyApp {
 
             ui.add_space(8.0);
 
-            // Placeholder for log plot
-            ui.label("📈 Log plot area - to be implemented");
-            ui.label("Select a well and log to display");
+            // Well log visualization placeholder
+            ui.label("Well log visualization coming in v1.1");
+            ui.label("Select a well and log curve to display its trajectory and measurements.");
         } else {
             ui.label("No wells loaded. Click '+ Add Well' in the Project Explorer.");
         }
@@ -622,12 +622,12 @@ impl eframe::App for SeislyApp {
                     ui.heading("🛢 Seisly");
                     ui.separator();
 
-                    // Quick access toolbar
-                    if ui.button("💾").clicked() { /* Save */ }
-                    if ui.button("↶").clicked() {
+                    // Quick access toolbar with tooltips
+                    if ui.button("💾").on_hover_text("Save project (Ctrl+S)").clicked() { /* Save */ }
+                    if ui.button("↶").on_hover_text("Undo (Ctrl+Z)").clicked() {
                         self.history.undo(&mut self.interpretation);
                     }
-                    if ui.button("↷").clicked() {
+                    if ui.button("↷").on_hover_text("Redo (Ctrl+Y)").clicked() {
                         self.history.redo(&mut self.interpretation);
                     }
 
@@ -643,11 +643,11 @@ impl eframe::App for SeislyApp {
                     }
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button(self.theme_manager.icon()).clicked() {
+                        if ui.button(self.theme_manager.icon()).on_hover_text("Toggle theme").clicked() {
                             self.theme_manager.toggle();
                             crate::ui::style::apply_theme(ctx, self.theme_manager.current_theme);
                         }
-                        if ui.button("❓").clicked() { /* Help */ }
+                        if ui.button("❓").on_hover_text("Help").clicked() { /* Help */ }
                     });
                 });
 

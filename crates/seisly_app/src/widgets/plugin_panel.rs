@@ -17,6 +17,7 @@ impl PluginPanel {
         let plugins = manager.list_plugins();
         if plugins.is_empty() {
             ui.label("No plugins discovered.");
+            ui.label("Place .py files in the /plugins folder to install.");
         } else {
             egui::Grid::new("plugin_grid")
                 .num_columns(3)
