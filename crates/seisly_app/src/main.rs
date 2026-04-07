@@ -1,5 +1,6 @@
 mod ai_client;
 mod app;
+mod diagnostics;
 mod interpretation;
 mod project;
 mod ui;
@@ -7,6 +8,9 @@ mod widgets;
 use app::SeislyApp;
 
 fn main() -> eframe::Result<()> {
+    // Initialize custom logger
+    let _ = diagnostics::init();
+
     // Sentry initialization (uses SENTRY_DSN env var if present)
     let _guard = sentry::init(sentry::ClientOptions {
         release: sentry::release_name!(),
