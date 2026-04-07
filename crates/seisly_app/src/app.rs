@@ -72,6 +72,8 @@ pub struct SeislyApp {
     pub(crate) tree: egui_dock::DockState<Tab>,
     pub(crate) show_help: bool,
     pub(crate) show_synthetic_data: bool,
+    pub(crate) is_busy: bool,
+    pub(crate) busy_message: String,
 }
 
 impl SeislyApp {
@@ -173,6 +175,8 @@ impl SeislyApp {
             show_settings: false,
             show_help: false,
             show_synthetic_data: false,
+            is_busy: false,
+            busy_message: String::new(),
             plugin_manager,
             plugin_panel: crate::widgets::plugin_panel::PluginPanel::new(),
             plugin_results: Vec::new(),
@@ -197,6 +201,28 @@ impl SeislyApp {
         // Add more default tabs
         tree.main_surface_mut().push_to_focused_leaf(Tab::CrossPlot);
         tree
+    }
+
+    fn show_loading_overlay(&self, ctx: &egui::Context) {
+        if self.is_busy {
+            egui::Area::new("loading_overlay".into())
+                .order(egui::Order::Foreground)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    egui::Frame::window(ui.style())
+                        .fill(egui::Color32::from_black_alpha(180))
+                        .rounding(8.0)
+                        .show(ui, |ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.add_space(20.0);
+                                ui.add(egui::Spinner::new().size(40.0));
+                                ui.add_space(10.0);
+                                ui.heading(&self.busy_message);
+                                ui.add_space(20.0);
+                            });
+                        });
+                });
+        }
     }
 
     pub fn render_viewport(&mut self, ui: &mut egui::Ui) {
@@ -1005,6 +1031,8 @@ impl eframe::App for SeislyApp {
                 .show_inside(ui, &mut viewer);
             self.tree = tree;
         });
+
+        self.show_loading_overlay(ctx);
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
