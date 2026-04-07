@@ -22,6 +22,14 @@ use seisly_compute::seismic::{InMemoryProvider, SeismicVolume};
 use seisly_plugin::PluginManager;
 use seisly_storage::project::SeismicVolumeEntry;
 
+#[derive(Clone, Default)]
+pub enum ImportState {
+    #[default]
+    Idle,
+    Scanning(std::path::PathBuf),
+    Scanned(std::path::PathBuf, seisly_io::segy::parser::SegyMetadata),
+}
+
 pub struct VisualSettings {
     pub gain: f32,
     pub clip: f32,
@@ -74,6 +82,7 @@ pub struct SeislyApp {
     pub(crate) show_synthetic_data: bool,
     pub(crate) is_busy: bool,
     pub(crate) busy_message: String,
+    pub(crate) import_state: ImportState,
 }
 
 impl SeislyApp {
@@ -177,6 +186,7 @@ impl SeislyApp {
             show_synthetic_data: false,
             is_busy: false,
             busy_message: String::new(),
+            import_state: ImportState::Idle,
             plugin_manager,
             plugin_panel: crate::widgets::plugin_panel::PluginPanel::new(),
             plugin_results: Vec::new(),
@@ -191,10 +201,10 @@ impl SeislyApp {
             0.2,
             vec![Tab::ProjectExplorer],
         );
-        let [_main_center, _right] =
+        let [_main_center, _right] = 
             tree.main_surface_mut()
                 .split_right(main, 0.75, vec![Tab::Properties]);
-        let [_main_center_sub, _bottom] =
+        let [_main_center_sub, _bottom] = 
             tree.main_surface_mut()
                 .split_below(main, 0.7, vec![Tab::WellLogs]);
 
@@ -306,7 +316,7 @@ impl SeislyApp {
             for fault in &mut self.interpretation.faults {
                 ui.horizontal(|ui| {
                     let is_active = self.interpretation.active_fault_id == Some(fault.id);
-                    let is_selected =
+                    let is_selected = 
                         self.interpretation.selected_fault_ids.contains(&fault.id);
 
                     let response = ui.selectable_label(is_active || is_selected, &fault.name);
@@ -507,24 +517,34 @@ impl SeislyApp {
                 }
             });
             ui.separator();
-            egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-                if let Ok(buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
-                    for entry in buffer.entries() {
-                        let color = match entry.level {
-                            log::Level::Error => egui::Color32::RED,
-                            log::Level::Warn => egui::Color32::YELLOW,
-                            _ => ui.visuals().text_color(),
-                        };
-                        ui.horizontal(|ui| {
-                            ui.label(egui::RichText::new(format!("[{}]
-", entry.timestamp.format("%H:%M:%S"))).weak());
-                            ui.label(egui::RichText::new(format!("{:?}
-", entry.level)).color(color).strong());
-                            ui.label(&entry.message);
-                        });
+            egui::ScrollArea::vertical()
+                .stick_to_bottom(true)
+                .show(ui, |ui| {
+                    if let Ok(buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
+                        for entry in buffer.entries() {
+                            let color = match entry.level {
+                                log::Level::Error => egui::Color32::RED,
+                                log::Level::Warn => egui::Color32::YELLOW,
+                                _ => ui.visuals().text_color(),
+                            };
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "[{}]",
+                                        entry.timestamp.format("%H:%M:%S")
+                                    ))
+                                    .weak(),
+                                );
+                                ui.label(
+                                    egui::RichText::new(format!("{:?}", entry.level))
+                                        .color(color)
+                                        .strong(),
+                                );
+                                ui.label(&entry.message);
+                            });
+                        }
                     }
-                }
-            });
+                });
         });
     }
 
@@ -607,7 +627,7 @@ impl SeislyApp {
                         for (i, pick) in horizon.picks.iter().enumerate() {
                             let comma = if i < horizon.picks.len() - 1 { "," } else { "" };
                             let _ = writeln!(
-                                f,
+                                f, 
                                 "  {{\"id\": \"{}\", \"position\": [{:.2}, {:.2}, {:.2}]}}{}",
                                 pick.id,
                                 pick.position[0],
@@ -744,7 +764,24 @@ impl SeislyApp {
             .pick_file()
         {
             println!("Import seismic from: {:?}", path);
-            // TODO: Load SEG-Y file and add to seismic_volumes
+            self.import_state = ImportState::Scanning(path.clone());
+            self.is_busy = true;
+            self.busy_message = format!("Scanning: {}", path.file_name().unwrap().to_string_lossy());
+            
+            // In a real app we'd use a background thread and a channel.
+            // For this version, we trigger the scan.
+            let path_clone = path.clone();
+            match seisly_io::segy::parser::parse_metadata(&path_clone) {
+                Ok(metadata) => {
+                    self.import_state = ImportState::Scanned(path_clone, metadata);
+                    self.is_busy = false;
+                }
+                Err(e) => {
+                    eprintln!("Scan failed: {}", e);
+                    self.is_busy = false;
+                    self.import_state = ImportState::Idle;
+                }
+            }
         }
     }
 
@@ -1031,6 +1068,55 @@ impl eframe::App for SeislyApp {
                 .show_inside(ui, &mut viewer);
             self.tree = tree;
         });
+
+        // Import Wizard Popup
+        if let ImportState::Scanned(path, metadata) = self.import_state.clone() {
+            let mut open = true;
+            egui::Window::new("📦 SEG-Y Import Wizard")
+                .open(&mut open)
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.heading("File Metadata");
+                    ui.label(format!("Path: {:?}", path));
+                    ui.separator();
+                    egui::Grid::new("metadata_grid").show(ui, |ui| {
+                        ui.label("Samples per Trace:");
+                        ui.label(metadata.sample_count.to_string());
+                        ui.end_row();
+                        ui.label("Sample Interval:");
+                        ui.label(format!("{} µs", metadata.sample_interval));
+                        ui.end_row();
+                        ui.label("Data Format:");
+                        ui.label(match metadata.format {
+                            1 => "IBM Float",
+                            5 => "IEEE Float",
+                            _ => "Unknown",
+                        });
+                        ui.end_row();
+                    });
+                    ui.add_space(10.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Cancel").clicked() {
+                            self.import_state = ImportState::Idle;
+                        }
+                        if ui.button("Confirm Import").clicked() {
+                            let name = path.file_stem().unwrap().to_string_lossy().to_string();
+                            self.seismic_volumes.push(SeismicVolumeEntry {
+                                id: Uuid::new_v4().to_string(),
+                                name,
+                                path: path.to_string_lossy().to_string(),
+                                is_visible: true,
+                                channel_assignment: 0,
+                            });
+                            self.import_state = ImportState::Idle;
+                        }
+                    });
+                });
+            if !open {
+                self.import_state = ImportState::Idle;
+            }
+        }
 
         self.show_loading_overlay(ctx);
     }

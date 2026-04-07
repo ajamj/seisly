@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
+#[derive(Debug, Clone)]
 pub struct SegyMetadata {
     pub inline_range: (i32, i32),
     pub crossline_range: (i32, i32),
