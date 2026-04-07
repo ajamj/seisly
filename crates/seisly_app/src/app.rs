@@ -2,7 +2,13 @@ use eframe::egui;
 use uuid::Uuid;
 
 use crate::interpretation::{
-    Fault, HistoryManager, Horizon, InterpretationState, PickingMode, VelocityState, WellState,
+    Fault,
+    HistoryManager,
+    Horizon,
+    InterpretationState,
+    PickingMode,
+    VelocityState,
+    WellState,
 };
 use crate::ui::style::{self, ThemeManager};
 use crate::ui::layout::{Tab, SeislyTabViewer};
@@ -192,8 +198,6 @@ impl SeislyApp {
         tree.main_surface_mut().push_to_focused_leaf(Tab::CrossPlot);
         tree
     }
-
-
 
     pub fn render_viewport(&mut self, ui: &mut egui::Ui) {
         self.viewport.ui(
@@ -467,6 +471,36 @@ impl SeislyApp {
         self.velocity_panel.ui(ui, &mut self.velocity);
     }
 
+    pub fn render_logs(&mut self, ui: &mut egui::Ui) {
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                if ui.button("🗑 Clear").clicked() {
+                    if let Ok(mut buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
+                        buffer.clear();
+                    }
+                }
+            });
+            ui.separator();
+            egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
+                if let Ok(buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
+                    for entry in buffer.entries() {
+                        let color = match entry.level {
+                            log::Level::Error => egui::Color32::RED,
+                            log::Level::Warn => egui::Color32::YELLOW,
+                            _ => ui.visuals().text_color(),
+                        };
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new(format!("[{}]
+", entry.timestamp.format("%H:%M:%S"))).weak());
+                            ui.label(egui::RichText::new(format!("{:?}
+", entry.level)).color(color).strong());
+                            ui.label(&entry.message);
+                        });
+                    }
+                }
+            });
+        });
+    }
 
     fn calculate_volumetrics(&mut self) {
         if self.interpretation.selected_horizon_ids.len() < 2 {
@@ -570,8 +604,7 @@ impl SeislyApp {
                                 std::path::Path::new(&format!(
                                     "{}_mesh.xyz",
                                     horizon.name.replace(" ", "_")
-                                )),
-                            )
+                                )))
                             .map_err(|e| anyhow::anyhow!("Mesh export failed: {}", e))
                     } else {
                         Err(anyhow::anyhow!("No mesh to export"))
@@ -723,10 +756,16 @@ impl eframe::App for SeislyApp {
                     if ui.button("💾").on_hover_text("Save project (Ctrl+S)").clicked() {
                         self.save_project();
                     }
-                    if ui.button("↶").on_hover_text("Undo (Ctrl+Z)").clicked() {
+                    
+                    let undo_icon = egui::Image::new(egui::include_image!("../assets/icons/undo.svg"))
+                        .tint(ui.visuals().widgets.active.fg_stroke.color);
+                    if ui.add(egui::Button::image(undo_icon)).on_hover_text("Undo (Ctrl+Z)").clicked() {
                         self.history.undo(&mut self.interpretation);
                     }
-                    if ui.button("↷").on_hover_text("Redo (Ctrl+Y)").clicked() {
+
+                    let redo_icon = egui::Image::new(egui::include_image!("../assets/icons/redo.svg"))
+                        .tint(ui.visuals().widgets.active.fg_stroke.color);
+                    if ui.add(egui::Button::image(redo_icon)).on_hover_text("Redo (Ctrl+Y)").clicked() {
                         self.history.redo(&mut self.interpretation);
                     }
 

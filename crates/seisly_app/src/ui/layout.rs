@@ -12,6 +12,7 @@ pub enum Tab {
     Plugins,
     CrossPlot,
     Velocity,
+    Logs,
 }
 
 pub struct SeislyTabViewer<'a> {
@@ -30,6 +31,7 @@ impl<'a> TabViewer for SeislyTabViewer<'a> {
             Tab::Plugins => "🧩 Plugins".into(),
             Tab::CrossPlot => "📉 Crossplot".into(),
             Tab::Velocity => "📏 Velocity".into(),
+            Tab::Logs => "📜 Logs".into(),
         }
     }
 
@@ -55,6 +57,9 @@ impl<'a> TabViewer for SeislyTabViewer<'a> {
             }
             Tab::Velocity => {
                 self.app.render_velocity(ui);
+            }
+            Tab::Logs => {
+                self.app.render_logs(ui);
             }
         }
     }
