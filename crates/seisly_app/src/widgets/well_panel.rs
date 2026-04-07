@@ -9,6 +9,7 @@ use eframe::egui;
 pub struct WellPanel {
     #[allow(dead_code)] // Reserved for future LAS file import dialog
     import_path: String,
+    pub selected_curve_id: Option<uuid::Uuid>,
 }
 
 impl Default for WellPanel {
@@ -21,6 +22,7 @@ impl WellPanel {
     pub fn new() -> Self {
         Self {
             import_path: String::new(),
+            selected_curve_id: None,
         }
     }
 

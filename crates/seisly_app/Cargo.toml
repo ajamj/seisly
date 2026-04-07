@@ -27,6 +27,7 @@ eframe = { workspace = true, features = ["wgpu"] }
 egui = { workspace = true, features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["svg", "all_loaders"] }
 egui_dock = { version = "0.14", features = ["serde"] }
+egui_plot = "0.29"
 winit.workspace = true
 anyhow.workspace = true
 tokio.workspace = true

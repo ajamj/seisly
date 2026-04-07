@@ -266,7 +266,7 @@ impl SeislyApp {
                     self.activity_button(ui, SidebarTab::Search, egui::include_image!("../assets/icons/search.svg"), "Search");
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                         ui.add_space(10.0);
-                        if ui.button("⚙").on_hover_text("Settings").clicked() { self.show_settings = true; }
+                        if ui.button("Settings").on_hover_text("Settings").clicked() { self.show_settings = true; }
                         self.activity_button(ui, SidebarTab::Extensions, egui::include_image!("../assets/icons/fault.svg"), "Plugins");
                     });
                 });
@@ -310,7 +310,7 @@ impl SeislyApp {
                         SidebarTab::Extensions => "PLUGINS",
                     }).strong().color(theme.side_bar_header_fg));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("✖").clicked() { self.show_sidebar = false; }
+                        if ui.button("X").clicked() { self.show_sidebar = false; }
                     });
                 });
                 ui.separator();
@@ -337,7 +337,7 @@ impl SeislyApp {
                         self.interpretation.active_horizon_id = Some(horizon.id);
                     }
                     ui.checkbox(&mut horizon.is_visible, "");
-                    if ui.button("🗑").clicked() { to_remove = Some(horizon.id); }
+                    if ui.button("Delete").clicked() { to_remove = Some(horizon.id); }
                 });
             }
             if let Some(id) = to_remove { self.interpretation.horizons.retain(|h| h.id != id); }
@@ -355,7 +355,7 @@ impl SeislyApp {
                         self.interpretation.active_fault_id = Some(fault.id);
                     }
                     ui.checkbox(&mut fault.is_visible, "");
-                    if ui.button("🗑").clicked() { to_remove = Some(fault.id); }
+                    if ui.button("Delete").clicked() { to_remove = Some(fault.id); }
                 });
             }
             if let Some(id) = to_remove { self.interpretation.faults.retain(|f| f.id != id); }
@@ -379,7 +379,7 @@ impl SeislyApp {
     }
 
     pub fn render_properties(&mut self, ui: &mut egui::Ui) {
-        ui.heading("📊 Properties");
+        ui.heading("Properties");
         ui.separator();
         if self.interpretation.active_horizon_id.is_some() {
             self.horizon_properties.ui(ui, &mut self.interpretation);
@@ -391,7 +391,66 @@ impl SeislyApp {
     }
 
     pub fn render_well_logs(&mut self, ui: &mut egui::Ui) {
-        ui.label("Well log visualization coming in v1.1");
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.heading("Well Logs & Crossplots");
+        });
+        ui.add_space(4.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        if !self.wells.wells.is_empty() {
+            ui.horizontal(|ui| {
+                ui.label("Well:");
+                for well in &self.wells.wells {
+                    let is_selected = self.wells.active_well_id == Some(well.id);
+                    if ui.selectable_label(is_selected, &well.name).clicked() {
+                        self.wells.active_well_id = Some(well.id);
+                        self.well_panel.selected_curve_id = None; // Reset curve selection
+                    }
+                }
+            });
+            ui.separator();
+
+            if let Some(well) = self.wells.active_well() {
+                ui.horizontal(|ui| {
+                    ui.label("Log:");
+                    for log in &well.logs {
+                        let is_selected = self.well_panel.selected_curve_id == Some(log.id);
+                        if ui.selectable_label(is_selected, &log.mnemonic).clicked() {
+                            self.well_panel.selected_curve_id = Some(log.id);
+                        }
+                    }
+                });
+
+                ui.add_space(8.0);
+
+                if let Some(curve_id) = self.well_panel.selected_curve_id {
+                    if let Some(log) = well.logs.iter().find(|l| l.id == curve_id) {
+                        let points: egui_plot::PlotPoints = log.data.iter().zip(log.depths.iter())
+                            .filter(|(&val, _)| val != -999.25 && !val.is_nan()) // Filter null values
+                            .map(|(&val, &depth)| [val as f64, -depth as f64]) // Negative depth so 0 is at top
+                            .collect();
+                            
+                        let line = egui_plot::Line::new(points).name(&log.mnemonic);
+
+                        egui_plot::Plot::new("well_log_plot")
+                            .view_aspect(0.3)
+                            .y_axis_formatter(|mark, _range| format!("{:.0} m", -mark.value))
+                            .label_formatter(|name, value| {
+                                format!("{}: {:.2}\nDepth: {:.2} m", name, value.x, -value.y)
+                            })
+                            .show(ui, |plot_ui| {
+                                plot_ui.line(line);
+                            });
+                    }
+                } else {
+                    ui.label("Select a log curve to visualize.");
+                }
+            }
+        } else {
+            ui.label("No wells loaded. Click 'Import Well (LAS)' in the Explorer.");
+        }
     }
 
     pub fn render_plugins(&mut self, ui: &mut egui::Ui) {
@@ -409,7 +468,7 @@ impl SeislyApp {
     pub fn render_logs(&mut self, ui: &mut egui::Ui) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                if ui.button("🗑 Clear").clicked() {
+                if ui.button("Clear").clicked() {
                     if let Ok(mut buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
                         buffer.clear();
                     }
@@ -569,7 +628,7 @@ impl eframe::App for SeislyApp {
                     
                     ui.separator();
 
-                    ui.menu_button("📁 File", |ui| {
+                    ui.menu_button("File", |ui| {
                         if ui.button("New Project").clicked() { self.new_project(); }
                         if ui.button("Open Project").clicked() { self.open_project(); }
                         if ui.button("Save Project").clicked() { self.save_project(); }
@@ -577,7 +636,7 @@ impl eframe::App for SeislyApp {
                         if ui.button("Import Seismic").clicked() { self.import_seismic(); }
                         if ui.button("Exit").clicked() { ctx.send_viewport_cmd(egui::ViewportCommand::Close); }
                     });
-                    ui.menu_button("👁 View", |ui| {
+                    ui.menu_button("View", |ui| {
                         ui.checkbox(&mut self.show_activity_bar, "Activity Bar");
                         ui.checkbox(&mut self.show_sidebar, "Side Bar");
                         ui.checkbox(&mut self.show_bottom_panel, "Bottom Panel");
@@ -602,7 +661,7 @@ impl eframe::App for SeislyApp {
             .frame(egui::Frame::none().fill(theme.status_bar_bg))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(" Ready").color(theme.status_bar_fg).size(10.0));
+                    ui.label(egui::RichText::new("Ready").color(theme.status_bar_fg).size(10.0));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(egui::RichText::new("X: 250.5  Y: 312.8  Z: 1523m ").color(theme.status_bar_fg).size(10.0));
                     });
@@ -619,7 +678,7 @@ impl eframe::App for SeislyApp {
                     ui.horizontal(|ui| {
                         ui.label(egui::RichText::new("LOGS").strong());
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("✖").clicked() { self.show_bottom_panel = false; }
+                            if ui.button("X").clicked() { self.show_bottom_panel = false; }
                         });
                     });
                     ui.separator();
