@@ -116,7 +116,7 @@ pub struct SeislyApp {
     pub(crate) active_sidebar_tab: SidebarTab,
 
     // Phase 2
-    pub(crate) gpu_computer: Option<GpuAttributeComputer>,
+    pub(crate) gpu_computer: Option<std::sync::Arc<GpuAttributeComputer>>,
 
     // Performance & Async
     pub(crate) last_theme_name: String,
@@ -127,7 +127,8 @@ pub struct SeislyApp {
 pub enum AppMessage {
     ScanComplete(std::path::PathBuf, seisly_io::segy::parser::SegyMetadata),
     ScanFailed(String),
-    GpuInitialized(Result<GpuAttributeComputer, String>),
+    GpuInitialized(Result<std::sync::Arc<GpuAttributeComputer>, String>),
+    GpuAttributeResult(String, Vec<f32>),
 }
 
 impl SeislyApp {
@@ -205,17 +206,19 @@ impl SeislyApp {
 
         // Phase 2: Async GPU Initialization
         let tx_gpu = tx.clone();
+        let egui_ctx = cc.egui_ctx.clone();
         std::thread::spawn(move || {
             log::info!("GPU Initialization started...");
             let result = pollster::block_on(GpuAttributeComputer::new());
             match result {
                 Ok(computer) => {
-                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(computer)));
+                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(std::sync::Arc::new(computer))));
                 }
                 Err(e) => {
-                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Err::<GpuAttributeComputer, String>(e.to_string())));
+                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Err::<std::sync::Arc<GpuAttributeComputer>, String>(e.to_string())));
                 }
             }
+            egui_ctx.request_repaint();
         });
 
         let mut settings = crate::widgets::settings_panel::SettingsPanel::new();
@@ -377,8 +380,8 @@ impl SeislyApp {
                 match active_tab {
                     SidebarTab::Explorer => self.render_project_explorer(ui),
                     SidebarTab::Interpretation => self.render_interpretation_panel(ui),
-                    SidebarTab::QI => self.qi_panel.ui(ui),
-                    SidebarTab::TimeLapse => self.time_lapse_panel.ui(ui),
+                    SidebarTab::QI => self.qi_panel.ui(ui, &mut self.gpu_computer, &self.tx, ctx),
+                    SidebarTab::TimeLapse => self.time_lapse_panel.ui(ui, &self.seismic_volumes),
                     SidebarTab::Search => { ui.label("Search implementation coming soon..."); },
                     SidebarTab::Diagnostics => { ui.label("Diagnostics (Logs) are shown in the bottom panel."); },
                     SidebarTab::Extensions => self.render_plugins(ui),
@@ -668,6 +671,10 @@ impl eframe::App for SeislyApp {
                             log::warn!("GPU Initialization failed: {}. Falling back to CPU.", e);
                         }
                     }
+                }
+                AppMessage::GpuAttributeResult(name, data) => {
+                    log::info!("GPU computation '{}' finished with {} samples.", name, data.len());
+                    self.is_busy = false;
                 }
             }
         }
