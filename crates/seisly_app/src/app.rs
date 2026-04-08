@@ -22,6 +22,8 @@ use seisly_compute::seismic::{InMemoryProvider, SeismicVolume};
 use seisly_plugin::PluginManager;
 use seisly_storage::project::SeismicVolumeEntry;
 
+use seisly_attributes_gpu::GpuAttributeComputer;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SidebarTab {
     Explorer,
@@ -106,6 +108,9 @@ pub struct SeislyApp {
     pub(crate) show_bottom_panel: bool,
     pub(crate) active_sidebar_tab: SidebarTab,
 
+    // Phase 2
+    pub(crate) gpu_computer: Option<GpuAttributeComputer>,
+
     // Performance & Async
     pub(crate) last_theme_name: String,
     pub(crate) tx: std::sync::mpsc::Sender<AppMessage>,
@@ -115,6 +120,7 @@ pub struct SeislyApp {
 pub enum AppMessage {
     ScanComplete(std::path::PathBuf, seisly_io::segy::parser::SegyMetadata),
     ScanFailed(String),
+    GpuInitialized(Result<GpuAttributeComputer, String>),
 }
 
 impl SeislyApp {
@@ -190,6 +196,21 @@ impl SeislyApp {
 
         let (tx, rx) = std::sync::mpsc::channel();
 
+        // Phase 2: Async GPU Initialization
+        let tx_gpu = tx.clone();
+        std::thread::spawn(move || {
+            log::info!("GPU Initialization started...");
+            let result = pollster::block_on(GpuAttributeComputer::new());
+            match result {
+                Ok(computer) => {
+                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(computer)));
+                }
+                Err(e) => {
+                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Err::<GpuAttributeComputer, String>(e.to_string())));
+                }
+            }
+        });
+
         let mut settings = crate::widgets::settings_panel::SettingsPanel::new();
         settings.settings.theme = theme_manager.current_theme.name.clone();
 
@@ -227,6 +248,7 @@ impl SeislyApp {
             show_sidebar,
             show_bottom_panel,
             active_sidebar_tab,
+            gpu_computer: None,
             last_theme_name: String::new(),
             tx,
             rx,
@@ -620,6 +642,17 @@ impl eframe::App for SeislyApp {
                     log::error!("Scan failed: {}", err);
                     self.is_busy = false;
                     self.import_state = ImportState::Idle;
+                }
+                AppMessage::GpuInitialized(result) => {
+                    match result {
+                        Ok(computer) => {
+                            log::info!("GPU Accelerator initialized successfully.");
+                            self.gpu_computer = Some(computer);
+                        }
+                        Err(e) => {
+                            log::warn!("GPU Initialization failed: {}. Falling back to CPU.", e);
+                        }
+                    }
                 }
             }
         }

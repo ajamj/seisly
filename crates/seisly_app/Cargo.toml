@@ -23,6 +23,9 @@ seisly_io.workspace = true
 seisly_compute.workspace = true
 seisly_render.workspace = true
 seisly_plugin = { workspace = true }
+seisly_qi = { workspace = true }
+seisly_4d = { workspace = true }
+seisly_attributes_gpu = { workspace = true }
 eframe = { workspace = true, features = ["wgpu"] }
 egui = { workspace = true, features = ["persistence"] }
 egui_extras = { version = "0.29", features = ["svg", "all_loaders"] }
@@ -42,6 +45,7 @@ chrono = { workspace = true }
 log = { workspace = true }
 sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "native-tls", "transport"] }
 rfd = "0.15"
+pollster = "0.3"
 
 [features]
 # No default features
