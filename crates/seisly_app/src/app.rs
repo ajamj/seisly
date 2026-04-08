@@ -28,6 +28,8 @@ use seisly_attributes_gpu::GpuAttributeComputer;
 pub enum SidebarTab {
     Explorer,
     Interpretation,
+    QI,
+    TimeLapse,
     Search,
     Diagnostics,
     Extensions,
@@ -272,11 +274,11 @@ impl SeislyApp {
                         .rounding(8.0)
                         .show(ui, |ui| {
                             ui.vertical_centered(|ui| {
-                                ui.add_space(20.0);
+                                ui.add_space(16.0);
                                 ui.add(egui::Spinner::new().size(40.0));
-                                ui.add_space(10.0);
+                                ui.add_space(8.0);
                                 ui.heading(&self.busy_message);
-                                ui.add_space(20.0);
+                                ui.add_space(16.0);
                             });
                         });
                 });
@@ -294,14 +296,16 @@ impl SeislyApp {
             .frame(egui::Frame::none().fill(theme_bg))
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
-                    ui.add_space(10.0);
+                    ui.add_space(8.0);
                     self.activity_button(ui, SidebarTab::Explorer, egui::include_image!("../assets/icons/files.svg"), "Explorer");
                     self.activity_button(ui, SidebarTab::Interpretation, egui::include_image!("../assets/icons/horizon.svg"), "Interpretation");
+                    self.activity_button(ui, SidebarTab::QI, egui::include_image!("../assets/icons/qi.svg"), "Quantitative Interpretation");
+                    self.activity_button(ui, SidebarTab::TimeLapse, egui::include_image!("../assets/icons/time_lapse.svg"), "4D Monitoring");
                     self.activity_button(ui, SidebarTab::Search, egui::include_image!("../assets/icons/search.svg"), "Search");
                     self.activity_button(ui, SidebarTab::Diagnostics, egui::include_image!("../assets/icons/terminal.svg"), "Diagnostics");
                     
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-                        ui.add_space(10.0);
+                        ui.add_space(8.0);
                         let settings_icon = egui::include_image!("../assets/icons/settings.svg");
                         let tint = if self.show_settings { active_icon_color } else { inactive_icon_color };
                         if ui.add(egui::ImageButton::new(egui::Image::new(settings_icon).tint(tint)).frame(false))
@@ -352,6 +356,8 @@ impl SeislyApp {
                     ui.label(egui::RichText::new(match active_tab {
                         SidebarTab::Explorer => "EXPLORER",
                         SidebarTab::Interpretation => "INTERPRETATION",
+                        SidebarTab::QI => "QUANTITATIVE INTERPRETATION",
+                        SidebarTab::TimeLapse => "4D MONITORING",
                         SidebarTab::Search => "SEARCH",
                         SidebarTab::Diagnostics => "DIAGNOSTICS",
                         SidebarTab::Extensions => "PLUGINS",
@@ -364,6 +370,8 @@ impl SeislyApp {
                 match active_tab {
                     SidebarTab::Explorer => self.render_project_explorer(ui),
                     SidebarTab::Interpretation => self.render_interpretation_panel(ui),
+                    SidebarTab::QI => { ui.label("QI Analysis tools coming soon..."); },
+                    SidebarTab::TimeLapse => { ui.label("4D Monitoring tools coming soon..."); },
                     SidebarTab::Search => { ui.label("Search implementation coming soon..."); },
                     SidebarTab::Diagnostics => { ui.label("Diagnostics (Logs) are shown in the bottom panel."); },
                     SidebarTab::Extensions => self.render_plugins(ui),
