@@ -83,7 +83,7 @@ pub struct SeislyApp {
     pub(crate) history: HistoryManager,
     #[allow(dead_code)]
     pub(crate) visuals: VisualSettings,
-    pub(crate) volume: Option<SeismicVolume>,
+    pub(crate) volume: Option<std::sync::Arc<SeismicVolume>>,
     pub(crate) seismic_volumes: Vec<SeismicVolumeEntry>,
     pub(crate) velocity: VelocityState,
     #[allow(dead_code)]
@@ -133,13 +133,14 @@ pub enum AppMessage {
 
 impl SeislyApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+
         let mut theme_manager = ThemeManager::new();
         if let Some(theme_name) = cc.storage
             .and_then(|s| s.get_string("seisly_theme")) {
             theme_manager.set_theme(&theme_name);
         }
 
-        egui_extras::install_image_loaders(&cc.egui_ctx);
         style::apply_theme(&cc.egui_ctx, &theme_manager.current_theme);
         
         let mut interpretation = InterpretationState::new();
@@ -170,7 +171,7 @@ impl SeislyApp {
         }
 
         let provider = InMemoryProvider { data, inline_range, crossline_range, sample_count };
-        let volume = Some(SeismicVolume::new(Box::new(provider)));
+        let volume = Some(std::sync::Arc::new(SeismicVolume::new(Box::new(provider))));
 
         let mut viewport = ViewportWidget::new();
         viewport.target_format = target_format;
@@ -204,22 +205,31 @@ impl SeislyApp {
 
         let (tx, rx) = std::sync::mpsc::channel();
 
-        // Phase 2: Async GPU Initialization
-        let tx_gpu = tx.clone();
-        let egui_ctx = cc.egui_ctx.clone();
-        std::thread::spawn(move || {
-            log::info!("GPU Initialization started...");
-            let result = pollster::block_on(GpuAttributeComputer::new());
-            match result {
-                Ok(computer) => {
-                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(std::sync::Arc::new(computer))));
+        // Phase 2: Async GPU Initialization using shared device (Safer for Integrated GPUs)
+        if let Some(wgpu_state) = &cc.wgpu_render_state {
+            let device = wgpu_state.device.clone();
+            let queue = wgpu_state.queue.clone();
+            let tx_gpu = tx.clone();
+            let egui_ctx = cc.egui_ctx.clone();
+            
+            std::thread::spawn(move || {
+                log::info!("Initializing GPU Computer from shared device...");
+                let result = GpuAttributeComputer::from_device(device, queue);
+                match result {
+                    Ok(computer) => {
+                        log::info!("GPU Computer initialized from shared state.");
+                        let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(std::sync::Arc::new(computer))));
+                    }
+                    Err(e) => {
+                        log::warn!("Shared GPU init failed: {}. Falling back to CPU.", e);
+                        let _ = tx_gpu.send(AppMessage::GpuInitialized(Err(e.to_string())));
+                    }
                 }
-                Err(e) => {
-                    let _ = tx_gpu.send(AppMessage::GpuInitialized(Err::<std::sync::Arc<GpuAttributeComputer>, String>(e.to_string())));
-                }
-            }
-            egui_ctx.request_repaint();
-        });
+                egui_ctx.request_repaint();
+            });
+        } else {
+            log::warn!("No WGPU render state available. GPU acceleration disabled.");
+        }
 
         let mut settings = crate::widgets::settings_panel::SettingsPanel::new();
         settings.settings.theme = theme_manager.current_theme.name.clone();
@@ -307,12 +317,12 @@ impl SeislyApp {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(8.0);
-                    self.activity_button(ui, SidebarTab::Explorer, egui::include_image!("../assets/icons/files.svg"), "Explorer");
-                    self.activity_button(ui, SidebarTab::Interpretation, egui::include_image!("../assets/icons/horizon.svg"), "Interpretation");
-                    self.activity_button(ui, SidebarTab::QI, egui::include_image!("../assets/icons/qi.svg"), "Quantitative Interpretation");
-                    self.activity_button(ui, SidebarTab::TimeLapse, egui::include_image!("../assets/icons/time_lapse.svg"), "4D Monitoring");
-                    self.activity_button(ui, SidebarTab::Search, egui::include_image!("../assets/icons/search.svg"), "Search");
-                    self.activity_button(ui, SidebarTab::Diagnostics, egui::include_image!("../assets/icons/terminal.svg"), "Diagnostics");
+                    self.activity_button(ui, SidebarTab::Explorer, egui::include_image!("../assets/icons/files.svg"), "Explorer", "📁");
+                    self.activity_button(ui, SidebarTab::Interpretation, egui::include_image!("../assets/icons/horizon.svg"), "Interpretation", "🌊");
+                    self.activity_button(ui, SidebarTab::QI, egui::include_image!("../assets/icons/qi.svg"), "Quantitative Interpretation", "🎯");
+                    self.activity_button(ui, SidebarTab::TimeLapse, egui::include_image!("../assets/icons/time_lapse.svg"), "4D Monitoring", "🕒");
+                    self.activity_button(ui, SidebarTab::Search, egui::include_image!("../assets/icons/search.svg"), "Search", "🔍");
+                    self.activity_button(ui, SidebarTab::Diagnostics, egui::include_image!("../assets/icons/terminal.svg"), "Diagnostics", "📋");
                     
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                         ui.add_space(8.0);
@@ -323,18 +333,31 @@ impl SeislyApp {
                             .clicked() { 
                             self.show_settings = !self.show_settings; 
                         }
-                        self.activity_button(ui, SidebarTab::Extensions, egui::include_image!("../assets/icons/fault.svg"), "Plugins");
+                        self.activity_button(ui, SidebarTab::Extensions, egui::include_image!("../assets/icons/fault.svg"), "Plugins", "🧩");
                     });
                 });
             });
     }
 
-    fn activity_button(&mut self, ui: &mut egui::Ui, tab: SidebarTab, icon: egui::ImageSource<'_>, tooltip: &str) {
+    fn activity_button(&mut self, ui: &mut egui::Ui, tab: SidebarTab, icon: egui::ImageSource<'_>, tooltip: &str, fallback: &str) {
         let is_active = (self.show_sidebar && self.active_sidebar_tab == tab) || (tab == SidebarTab::Diagnostics && self.show_bottom_panel);
         let theme = &self.theme_manager.current_theme;
         let tint = if is_active { theme.activity_bar_active_icon } else { theme.activity_bar_inactive_icon };
+        
         let button = egui::ImageButton::new(egui::Image::new(icon).tint(tint)).frame(false);
-        let response = ui.add(button);
+        let response = ui.add(button).on_hover_text(tooltip);
+        
+        // If image fails to load (red warning showing), draw fallback text over it
+        if response.rect.width() > 0.0 {
+             ui.painter().text(
+                response.rect.center(),
+                egui::Align2::CENTER_CENTER,
+                fallback,
+                egui::FontId::proportional(16.0),
+                if is_active { theme.accent } else { theme.activity_bar_inactive_icon }.gamma_multiply(0.3) // Faint fallback
+            );
+        }
+
         if response.clicked() {
             if tab == SidebarTab::Diagnostics {
                 self.show_bottom_panel = !self.show_bottom_panel;
@@ -343,7 +366,7 @@ impl SeislyApp {
                 else { self.show_sidebar = true; self.active_sidebar_tab = tab; }
             }
         }
-        response.clone().on_hover_text(tooltip);
+        
         if is_active {
             let rect = response.rect;
             ui.painter().rect_filled(
@@ -595,7 +618,7 @@ impl SeislyApp {
         println!("Project saved.");
     }
 
-    fn import_seismic(&mut self) {
+    fn import_seismic(&mut self, ctx: &egui::Context) {
         use rfd::FileDialog;
         if let Some(path) = FileDialog::new()
             .set_title("Import Seismic Data")
@@ -608,6 +631,7 @@ impl SeislyApp {
             
             let path_clone = path.clone();
             let tx = self.tx.clone();
+            let egui_ctx = ctx.clone();
             
             std::thread::spawn(move || {
                 match seisly_io::segy::parser::parse_metadata(&path_clone) {
@@ -618,6 +642,7 @@ impl SeislyApp {
                         let _ = tx.send(AppMessage::ScanFailed(e.to_string()));
                     }
                 }
+                egui_ctx.request_repaint();
             });
         }
     }
@@ -714,7 +739,7 @@ impl eframe::App for SeislyApp {
                         if ui.button("Open Project").clicked() { self.open_project(); }
                         if ui.button("Save Project").clicked() { self.save_project(); }
                         ui.separator();
-                        if ui.button("Import Seismic").clicked() { self.import_seismic(); }
+                        if ui.button("Import Seismic").clicked() { self.import_seismic(ctx); }
                         if ui.button("Exit").clicked() { ctx.send_viewport_cmd(egui::ViewportCommand::Close); }
                     });
                     ui.menu_button("View", |ui| {
@@ -808,6 +833,7 @@ impl eframe::App for SeislyApp {
                         if ui.button("Cancel").clicked() { self.import_state = ImportState::Idle; }
                         if ui.button("Confirm Import").clicked() {
                             let name = path.file_stem().unwrap().to_string_lossy().to_string();
+                            log::info!("Confirming import for seismic volume: {}", name);
                             self.seismic_volumes.push(SeismicVolumeEntry {
                                 id: Uuid::new_v4().to_string(),
                                 name,
@@ -816,6 +842,7 @@ impl eframe::App for SeislyApp {
                                 channel_assignment: 0,
                             });
                             self.import_state = ImportState::Idle;
+                            ctx.request_repaint();
                         }
                     });
                 });

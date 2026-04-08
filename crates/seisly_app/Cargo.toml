@@ -43,6 +43,7 @@ tempfile.workspace = true
 lazy_static = "1.4"
 chrono = { workspace = true }
 log = { workspace = true }
+bytemuck = { version = "1.14", features = ["derive"] }
 sentry = { version = "0.34", default-features = false, features = ["backtrace", "contexts", "panic", "native-tls", "transport"] }
 rfd = "0.15"
 pollster = "0.3"
