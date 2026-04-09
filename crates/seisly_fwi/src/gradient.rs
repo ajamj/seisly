@@ -136,13 +136,13 @@ impl LineSearch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array2;
+    use ndarray::{Array1, Array2};
 
     #[test]
     fn test_gradient_computation() {
-        let fwd = Array2::from(vec![1.0, 2.0, 3.0, 4.0]);
-        let adj = Array2::from(vec![0.5, 1.0, 1.5, 2.0]);
-        let vel = Array2::from_elem((2, 2), 2000.0);
+        let fwd: Array2<f32> = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]).into_shape((2, 2)).unwrap();
+        let adj: Array2<f32> = Array1::from_vec(vec![0.5, 1.0, 1.5, 2.0]).into_shape((2, 2)).unwrap();
+        let vel = Array2::from_elem((2, 2), 2000.0f32);
 
         let grad = GradientCalculator::compute_adjoint(&fwd, &adj, &vel);
 
@@ -152,8 +152,7 @@ mod tests {
 
     #[test]
     fn test_gradient_smoothing() {
-        let gradient = Array2::from(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
-        let gradient = gradient.into_shape((3, 3)).unwrap();
+        let gradient: Array2<f32> = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).into_shape((3, 3)).unwrap();
 
         let smoothed = GradientCalculator::precondition(&gradient, Preconditioner::Smooth(1));
 
@@ -164,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_illumination_preconditioning() {
-        let gradient = Array2::from(vec![1.0, 2.0, 3.0, 4.0]);
+        let gradient: Array2<f32> = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]).into_shape((2, 2)).unwrap();
 
         let precond = GradientCalculator::precondition(&gradient, Preconditioner::Illumination);
 
@@ -174,8 +173,8 @@ mod tests {
 
     #[test]
     fn test_line_search() {
-        let gradient = Array2::from(vec![1.0, 2.0, 3.0, 4.0]);
-        let velocity = Array2::from_elem((2, 2), 2000.0);
+        let gradient: Array2<f32> = Array1::from_vec(vec![1.0, 2.0, 3.0, 4.0]).into_shape((2, 2)).unwrap();
+        let velocity = Array2::from_elem((2, 2), 2000.0f32);
 
         let misfit_fn = |v: &Array2<f32>| v.iter().sum::<f32>();
 

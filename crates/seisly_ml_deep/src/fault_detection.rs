@@ -139,7 +139,7 @@ mod tests {
         let detector = FaultDetector::new(model, 0.5);
 
         // Create dummy seismic
-        let seismic = Tensor::zeros((1, 1, 256, 256), &device).unwrap();
+        let seismic = Tensor::zeros((1, 1, 256, 256), candle_core::DType::F32, &device).unwrap();
 
         let fault_map = detector.detect(&seismic).unwrap();
 

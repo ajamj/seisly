@@ -201,7 +201,7 @@ mod tests {
         let model = HorizonUNet::new(vb).unwrap();
 
         // Create dummy input: batch=1, channels=1, 256x256
-        let input = Tensor::zeros((1, 1, 256, 256), &device).unwrap();
+        let input = Tensor::zeros((1, 1, 256, 256), candle_core::DType::F32, &device).unwrap();
 
         let (offset, confidence) = model.forward_t(&input, false).unwrap();
 

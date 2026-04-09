@@ -1,11 +1,7 @@
+//! Integration test for Shared Memory IPC between Rust host and Python worker.
+#![cfg(feature = "python")]
+
 use seisly_core::ipc::ShmSegment;
-/// Integration test for Shared Memory IPC between Rust host and Python worker.
-///
-/// This test verifies:
-/// 1. Host can allocate a shared memory segment and write data
-/// 2. Worker can attach to the segment and read the data
-/// 3. Data integrity is maintained across process boundary
-/// 4. SHM transfer is significantly faster than JSON-RPC for large payloads
 use seisly_plugin::ipc::IpcBridge;
 
 #[test]
