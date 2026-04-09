@@ -32,10 +32,15 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libproj-dev libsqlite3-dev protobuf-compiler
+          sudo apt-get install -y libproj-dev libsqlite3-dev protobuf-compiler python3-dev
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Build Workspace (ensure build artifacts exist)
         run: cargo build --workspace --features python
