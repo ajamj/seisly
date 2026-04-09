@@ -4,10 +4,10 @@
 
 pub mod acoustic;
 pub mod elastic;
-pub mod misfit;
 pub mod gradient;
+pub mod misfit;
 
 pub use acoustic::AcousticFWI;
 pub use elastic::ElasticFWI;
-pub use misfit::MisfitFunction;
 pub use gradient::GradientCalculator;
+pub use misfit::MisfitFunction;

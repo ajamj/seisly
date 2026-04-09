@@ -17,12 +17,12 @@ impl TrackingQuality {
             geological_plausibility: plausibility,
         }
     }
-    
+
     /// Overall quality score (weighted average)
     pub fn overall_score(&self) -> f32 {
         0.5 * self.confidence + 0.3 * self.continuity + 0.2 * self.geological_plausibility
     }
-    
+
     /// Quality rating
     pub fn rating(&self) -> QualityRating {
         let score = self.overall_score();
@@ -52,29 +52,35 @@ pub struct QualityAnalyzer;
 
 impl QualityAnalyzer {
     /// Analyze tracking quality
-    pub fn analyze(surface: &Surface, seismic: &dyn seisly_compute::seismic::TraceProvider) -> TrackingQuality {
+    pub fn analyze(
+        surface: &Surface,
+        seismic: &dyn seisly_compute::seismic::TraceProvider,
+    ) -> TrackingQuality {
         let confidence = Self::compute_confidence(surface, seismic);
         let continuity = Self::compute_continuity(surface);
         let plausibility = Self::compute_geological_plausibility(surface);
-        
+
         TrackingQuality::new(confidence, continuity, plausibility)
     }
-    
+
     /// Compute confidence from tracking algorithm
-    fn compute_confidence(surface: &Surface, _seismic: &dyn seisly_compute::seismic::TraceProvider) -> f32 {
+    fn compute_confidence(
+        surface: &Surface,
+        _seismic: &dyn seisly_compute::seismic::TraceProvider,
+    ) -> f32 {
         // In production: use ML confidence values
         // For now, based on surface point density
         let num_points: usize = surface.meshes.iter().map(|m| m.vertices.len()).sum();
         (num_points as f32 / 1000.0).min(1.0)
     }
-    
+
     /// Compute horizon continuity
     fn compute_continuity(_surface: &Surface) -> f32 {
         // Analyze surface smoothness and gaps
         // In production: implement proper continuity analysis
         0.8 // Dummy value
     }
-    
+
     /// Compute geological plausibility
     fn compute_geological_plausibility(_surface: &Surface) -> f32 {
         // Check for:
@@ -128,7 +134,7 @@ impl QualityAnalyzer {
         let quality = Self::analyze(surface, seismic);
         let mut issues = Vec::new();
         let mut recommendations = Vec::new();
-        
+
         // Check for issues
         if quality.confidence < 0.5 {
             issues.push(QCIssue {
@@ -139,7 +145,7 @@ impl QualityAnalyzer {
             });
             recommendations.push("Review seed point selection".to_string());
         }
-        
+
         if quality.continuity < 0.5 {
             issues.push(QCIssue {
                 issue_type: IssueType::Discontinuity,
@@ -149,7 +155,7 @@ impl QualityAnalyzer {
             });
             recommendations.push("Consider fault-guided tracking".to_string());
         }
-        
+
         QCReport {
             quality,
             issues,
@@ -166,10 +172,10 @@ mod tests {
     fn test_quality_rating() {
         let quality = TrackingQuality::new(0.9, 0.8, 0.9);
         assert_eq!(quality.rating(), QualityRating::Excellent);
-        
+
         let quality2 = TrackingQuality::new(0.5, 0.5, 0.5);
         assert_eq!(quality2.rating(), QualityRating::Fair);
-        
+
         let quality3 = TrackingQuality::new(0.2, 0.3, 0.2);
         assert_eq!(quality3.rating(), QualityRating::Poor);
     }
@@ -178,7 +184,7 @@ mod tests {
     fn test_overall_score() {
         let quality = TrackingQuality::new(1.0, 0.5, 0.5);
         let score = quality.overall_score();
-        
+
         // 0.5*1.0 + 0.3*0.5 + 0.2*0.5 = 0.5 + 0.15 + 0.1 = 0.75
         assert!((score - 0.75).abs() < 0.01);
     }

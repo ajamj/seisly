@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use seisly_core::domain::surface::Mesh;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub mod history;

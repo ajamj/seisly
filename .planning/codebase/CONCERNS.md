@@ -55,6 +55,11 @@
 | `seisly_app/time_lapse_panel.rs:56` | 4D trace data loading | Placeholder logic |
 | `seisly_py_worker/main.rs:188` | Complex type conversion | Falls back to string |
 
+### FaultGuidedTracker Returns Seed Point Only
+- **Location:** `seisly_tracking/src/fault_guided.rs:15-17`
+- **Issue:** `track()` ignores the `TraceProvider` entirely and returns `vec![seed]`. The entire fault-guided tracking workflow is non-functional.
+- **Impact:** Any UI entry point for fault-guided horizon tracking produces meaningless single-point results.
+
 ### Large Files Needing Decomposition
 
 | File | Lines | Concern |
@@ -72,6 +77,23 @@ Beyond the critical items above, these locations use `.unwrap()` without defensi
 - `seisly_app/src/main.rs:641` — `path.file_name().unwrap()` in busy message formatting
 - `seisly_render/seismic_renderer.rs:177` — `.unwrap()` on GPU device request in test (acceptable for test, but pattern leaks)
 - `seisly_tracking/multi_horizon.rs:34, 106` — `unwrap_or_else` and `.unwrap()` on ML model initialization
+- `seisly_attributes/src/frequency.rs:53` — `partial_cmp().unwrap()` in FFT frequency analysis (NaN risk)
+- `seisly_attributes_gpu/src/compute.rs:252, 258` — `.unwrap()` on channel send/receive in GPU compute path
+
+### CLI List Command Fully Non-Functional
+- **Location:** `seisly_cli/src/commands/list.rs:16-28`
+- **Issue:** `list` subcommand prints "(not yet implemented - requires SQLite queries)" for wells, surfaces, logs, and datasets. The only output is the project manifest name and version.
+- **Impact:** Users of the `sf` CLI have no way to query project contents from the command line.
+
+### LAS 3.0 Parser Rejects Version 3.0 Files
+- **Location:** `seisly_io/src/las/parser.rs:53`
+- **Issue:** The parser returns an error "LAS 3.0 not yet implemented" when encountering version 3.0 headers, despite the existence of a separate `LasV3Reader` in `seisly_io/src/las/v3.rs`. The parser dispatch logic does not route to the v3 reader.
+- **Impact:** LAS 3.0 files cannot be imported through the standard LAS parser path.
+
+### Zero-Copy Bridge Has Unsound Lifetime Assumption
+- **Location:** `seisly_plugin/src/bridge.rs:19`
+- **Issue:** `share_with_python()` uses `PyArrayDyn::borrow_from_array_bound()` with a reference to Rust-owned data, but the safety comment says "The caller must ensure the data slice outlives the NumPy array." There is no compile-time enforcement — if the Rust Vec is dropped while Python still holds the array, this is undefined behavior.
+- **Impact:** Potential memory corruption if plugin code retains references to transferred seismic data after the source vector is freed.
 
 ### Dead Code Markers
 - Extensive `#[allow(dead_code)]` annotations across `seisly_app/src/app.rs` (VisualSettings fields, name field, various state)

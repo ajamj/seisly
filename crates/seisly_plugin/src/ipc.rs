@@ -1,13 +1,13 @@
-use std::process::{Child, Command, Stdio, ChildStdin, ChildStdout};
-use std::io::{BufReader, BufRead, Write};
+use crate::bridge::{data_size_bytes, should_use_shm};
+use anyhow::{anyhow, Context, Result};
+use seisly_core::ipc::ShmSegment;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use anyhow::{Result, anyhow, Context};
-use seisly_core::ipc::ShmSegment;
-use crate::bridge::{should_use_shm, data_size_bytes};
 use sysinfo::System;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -127,7 +127,12 @@ impl IpcBridge {
                     }
                     Err(e) => {
                         let failures = failure_count.fetch_add(1, Ordering::Relaxed) + 1;
-                        log::warn!("Heartbeat failed ({} / {}): {}", failures, MAX_HEARTBEAT_FAILURES, e);
+                        log::warn!(
+                            "Heartbeat failed ({} / {}): {}",
+                            failures,
+                            MAX_HEARTBEAT_FAILURES,
+                            e
+                        );
 
                         if failures >= MAX_HEARTBEAT_FAILURES {
                             log::error!("Worker unresponsive, killing and marking for restart");
@@ -149,9 +154,9 @@ impl IpcBridge {
         let mut inner_guard = self.inner.lock().unwrap();
 
         if let Some(ref mut instance) = *inner_guard {
-             if let Ok(None) = instance._child.try_wait() {
-                 return Ok(());
-             }
+            if let Ok(None) = instance._child.try_wait() {
+                return Ok(());
+            }
         }
 
         // Spawn worker with resource limits
@@ -185,8 +190,14 @@ impl IpcBridge {
             apply_windows_job_object(pid, DEFAULT_MEMORY_LIMIT_MB)?;
         }
 
-        let stdin = child.stdin.take().ok_or_else(|| anyhow!("Stdin not available"))?;
-        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Stdout not available"))?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| anyhow!("Stdin not available"))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| anyhow!("Stdout not available"))?;
 
         *inner_guard = Some(WorkerInstance {
             _child: child,
@@ -220,8 +231,8 @@ impl IpcBridge {
         let result = self.execute_internal_str("handshake", params)?;
 
         // Parse handshake response
-        let handshake_response: HandshakeResponse = serde_json::from_str(&result)
-            .context("Failed to parse handshake response")?;
+        let handshake_response: HandshakeResponse =
+            serde_json::from_str(&result).context("Failed to parse handshake response")?;
 
         // Check version compatibility
         if !self.is_version_compatible(&handshake_response.protocol_version) {
@@ -347,14 +358,18 @@ impl IpcBridge {
 
     fn execute_internal(&self, req: Request) -> Result<serde_json::Value> {
         let mut inner_guard = self.inner.lock().unwrap();
-        let instance = inner_guard.as_mut().ok_or_else(|| anyhow!("Worker not initialized"))?;
+        let instance = inner_guard
+            .as_mut()
+            .ok_or_else(|| anyhow!("Worker not initialized"))?;
 
         let req_json = serde_json::to_string(&req)? + "\n";
         instance.stdin.write_all(req_json.as_bytes())?;
         instance.stdin.flush()?;
 
         let mut line = String::new();
-        instance.stdout.read_line(&mut line)
+        instance
+            .stdout
+            .read_line(&mut line)
             .map_err(|e| anyhow!("Failed to read from worker: {}", e))?;
 
         if line.is_empty() {
@@ -368,13 +383,16 @@ impl IpcBridge {
             return Err(anyhow!("Worker error: {}", err));
         }
 
-        resp.result.ok_or_else(|| anyhow!("Missing result in response"))
+        resp.result
+            .ok_or_else(|| anyhow!("Missing result in response"))
     }
 
     /// Internal method for executing a method and getting raw string response
     fn execute_internal_str(&self, method: &str, params: serde_json::Value) -> Result<String> {
         let mut inner_guard = self.inner.lock().unwrap();
-        let instance = inner_guard.as_mut().ok_or_else(|| anyhow!("Worker not initialized"))?;
+        let instance = inner_guard
+            .as_mut()
+            .ok_or_else(|| anyhow!("Worker not initialized"))?;
 
         let id = {
             let mut id_guard = self.next_id.lock().unwrap();
@@ -394,7 +412,9 @@ impl IpcBridge {
         instance.stdin.flush()?;
 
         let mut line = String::new();
-        instance.stdout.read_line(&mut line)
+        instance
+            .stdout
+            .read_line(&mut line)
             .map_err(|e| anyhow!("Failed to read from worker: {}", e))?;
 
         if line.is_empty() {
@@ -419,7 +439,9 @@ impl IpcBridge {
     /// Simple internal method for heartbeat pings (no ID tracking, no handshake)
     fn execute_internal_simple(&self, method: &str) -> Result<String> {
         let mut inner_guard = self.inner.lock().unwrap();
-        let instance = inner_guard.as_mut().ok_or_else(|| anyhow!("Worker not initialized"))?;
+        let instance = inner_guard
+            .as_mut()
+            .ok_or_else(|| anyhow!("Worker not initialized"))?;
 
         // Use a fixed ID for heartbeat pings
         let req = Request {
@@ -433,7 +455,9 @@ impl IpcBridge {
         instance.stdin.flush()?;
 
         let mut line = String::new();
-        instance.stdout.read_line(&mut line)
+        instance
+            .stdout
+            .read_line(&mut line)
             .map_err(|e| anyhow!("Failed to read from worker: {}", e))?;
 
         if line.is_empty() {
@@ -481,8 +505,10 @@ fn apply_linux_resource_limits(pid: u32, memory_limit_mb: u64) -> Result<()> {
     // RLIMIT_RSS = 5, soft limit, hard limit
     let output = Command::new("prlimit")
         .args([
-            "--pid", &pid.to_string(),
-            "--rss", &format!("{}:{}", memory_limit_bytes, memory_limit_bytes),
+            "--pid",
+            &pid.to_string(),
+            "--rss",
+            &format!("{}:{}", memory_limit_bytes, memory_limit_bytes),
         ])
         .output();
 
@@ -493,10 +519,16 @@ fn apply_linux_resource_limits(pid: u32, memory_limit_mb: u64) -> Result<()> {
                 log::warn!("prlimit failed (may require root): {}", stderr);
                 return Ok(()); // Don't fail, just warn
             }
-            log::info!("Applied Linux resource limits: RSS limit = {} MB", memory_limit_mb);
+            log::info!(
+                "Applied Linux resource limits: RSS limit = {} MB",
+                memory_limit_mb
+            );
         }
         Err(e) => {
-            log::warn!("Failed to apply prlimit (not available or permission denied): {}", e);
+            log::warn!(
+                "Failed to apply prlimit (not available or permission denied): {}",
+                e
+            );
             // Don't fail, prlimit may not be available
         }
     }
@@ -510,7 +542,11 @@ fn apply_windows_job_object(pid: u32, memory_limit_mb: u64) -> Result<()> {
     // Note: Full Windows Job Object implementation requires additional setup.
     // For now, we rely on the background watchdog to monitor and kill the process
     // if it exceeds memory limits.
-    log::info!("Windows worker spawned with PID: {}, memory limit: {} MB (monitored by watchdog)", pid, memory_limit_mb);
+    log::info!(
+        "Windows worker spawned with PID: {}, memory limit: {} MB (monitored by watchdog)",
+        pid,
+        memory_limit_mb
+    );
     Ok(())
 }
 

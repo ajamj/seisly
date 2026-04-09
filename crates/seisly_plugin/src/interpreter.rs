@@ -17,9 +17,7 @@ impl PythonInterpreter {
 
     /// Execute a Python string.
     pub fn run_string(&self, code: &str) -> PyResult<()> {
-        Python::with_gil(|py| {
-            py.run_bound(code, None, None)
-        })
+        Python::with_gil(|py| py.run_bound(code, None, None))
     }
 }
 
@@ -31,7 +29,9 @@ mod tests {
     #[cfg(feature = "python")]
     fn test_interpreter_init() {
         let interp = PythonInterpreter::new().expect("Failed to initialize Python");
-        interp.run_string("import sys; print(f'Python version: {sys.version}')").expect("Failed to run Python code");
+        interp
+            .run_string("import sys; print(f'Python version: {sys.version}')")
+            .expect("Failed to run Python code");
     }
 
     #[test]

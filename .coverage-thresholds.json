@@ -1,0 +1,44 @@
+{
+  "coverage_thresholds": {
+    "global": {
+      "line": 70,
+      "branch": 50
+    },
+    "per_crate": {
+      "seisly_render": {
+        "line": 75,
+        "branch": 60,
+        "notes": "Rendering crate — colormaps, shaders, slice extraction need thorough testing"
+      },
+      "seisly_io": {
+        "line": 80,
+        "branch": 65,
+        "notes": "I/O crate — SEG-Y parsing, sidecar indexing, background scanning must be robust"
+      },
+      "seisly_app": {
+        "line": 65,
+        "branch": 45,
+        "notes": "UI crate — widget integration tests, unwrap safety verified by grep + clippy"
+      },
+      "seisly_core": {
+        "line": 70,
+        "branch": 55,
+        "notes": "Core types — NaN safety, SafeMmap docs verified by unit tests"
+      },
+      "seisly_compute": {
+        "line": 70,
+        "branch": 55,
+        "notes": "Compute algorithms — slice extraction, tracking, velocity"
+      },
+      "seisly_storage": {
+        "line": 60,
+        "branch": 40,
+        "notes": "Storage crate — SQLite, blob store"
+      }
+    }
+  },
+  "blocking_gate": true,
+  "measurement_tool": "cargo-tarpaulin",
+  "coverage_command": "cargo tarpaulin --fail-under <threshold>",
+  "notes": "Coverage thresholds for v1.3 seismic visualization phase. Enforced by CI on every PR. If any crate falls below its threshold, the PR is blocked until coverage is restored."
+}

@@ -1,8 +1,8 @@
 //! Python Bindings for Seisly Plugin System
 
+use crate::manager::PluginManager;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use crate::manager::PluginManager;
 
 /// Python wrapper for PluginManager
 #[pyclass]
@@ -18,24 +18,35 @@ impl PyPluginManager {
             manager: PluginManager::new(),
         }
     }
-    
+
     /// List all registered plugins
     fn list_plugins(&self) -> PyResult<Vec<String>> {
-        Ok(self.manager.list_plugins().iter().map(|s| s.to_string()).collect())
+        Ok(self
+            .manager
+            .list_plugins()
+            .iter()
+            .map(|s| s.to_string())
+            .collect())
     }
-    
+
     /// Execute a plugin command
-    fn execute(&self, py: Python<'_>, plugin_name: &str, command: &str, args: Bound<'_, PyDict>) -> PyResult<PyObject> {
+    fn execute(
+        &self,
+        py: Python<'_>,
+        plugin_name: &str,
+        command: &str,
+        args: Bound<'_, PyDict>,
+    ) -> PyResult<PyObject> {
         // Convert PyDict to serde_json::Value
         let args_json = python_to_json(py, &args)?;
-        
+
         // Execute plugin
         match self.manager.execute(plugin_name, command, args_json) {
             Ok(result) => json_to_python(py, &result),
             Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e.to_string())),
         }
     }
-    
+
     /// Get plugin count
     fn plugin_count(&self) -> usize {
         self.manager.plugin_count()

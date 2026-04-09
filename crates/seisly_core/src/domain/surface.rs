@@ -31,7 +31,7 @@ impl Mesh {
     }
 
     /// Compute vertex normals by averaging face normals with area weighting.
-    /// 
+    ///
     /// Area-weighted normals prevent small triangles from disproportionately affecting
     /// the surface appearance, resulting in smoother shading for horizons with varying
     /// triangle sizes.
@@ -155,12 +155,12 @@ mod tests {
         let vertices = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
         let indices = vec![0, 1, 2];
         let mut mesh = Mesh::new(vertices, indices);
-        
+
         mesh.compute_normals();
-        
+
         let normals = mesh.normals.expect("Normals should be computed");
         assert_eq!(normals.len(), 3);
-        
+
         // Each vertex normal should be [0, 0, 1]
         for n in normals {
             assert!(n[0].abs() < 1e-6);

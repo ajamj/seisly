@@ -10,10 +10,10 @@ use std::any::Any;
 pub trait Command: Any {
     /// Execute the command, modifying the target state
     fn execute(&mut self, target: &mut dyn Any);
-    
+
     /// Undo the command, reverting the target to its previous state
     fn undo(&mut self, target: &mut dyn Any);
-    
+
     /// Get a human-readable name for this command
     fn name(&self) -> &'static str;
 }
@@ -46,7 +46,7 @@ impl UndoRedoStack {
         command.execute(target);
         self.undo_stack.push(command);
         self.redo_stack.clear();
-        
+
         // Trim stack if it exceeds max size
         if self.undo_stack.len() > self.max_stack_size {
             self.undo_stack.remove(0);
@@ -181,7 +181,7 @@ mod tests {
 
         stack.execute(Box::new(TestCommand::new(10)), &mut value);
         stack.execute(Box::new(TestCommand::new(20)), &mut value);
-        
+
         // Undo once
         stack.undo(&mut value);
         assert!(stack.can_redo());
@@ -225,9 +225,9 @@ mod tests {
 
         stack.execute(Box::new(TestCommand::new(10)), &mut value);
         stack.execute(Box::new(TestCommand::new(20)), &mut value);
-        
+
         stack.clear();
-        
+
         assert!(!stack.can_undo());
         assert!(!stack.can_redo());
         assert_eq!(stack.undo_count(), 0);

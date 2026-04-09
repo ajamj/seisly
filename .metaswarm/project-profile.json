@@ -1,0 +1,19 @@
+{
+  "version": "0.11.0",
+  "language": "Rust",
+  "secondary_language": "Python",
+  "framework": "egui/wgpu",
+  "package_manager": "cargo",
+  "test_runner": "cargo test --workspace",
+  "linter": "cargo clippy --workspace --all-targets -- -W clippy::all",
+  "formatter": "cargo fmt --all -- --check",
+  "ci": "GitHub Actions",
+  "ci_file": ".github/workflows/ci-cd.yml",
+  "coverage_tool": "cargo tarpaulin",
+  "coverage_command": "cargo tarpaulin --fail-under <threshold>",
+  "coverage_threshold": 70,
+  "coverage_per_crate": true,
+  "shim_location": "both",
+  "created_at": "2026-04-09T00:00:00.000Z",
+  "updated_at": "2026-04-09T00:00:00.000Z"
+}

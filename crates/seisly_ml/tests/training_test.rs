@@ -1,7 +1,7 @@
 //! Integration tests for the training pipeline
 
 use seisly_ml::synthetic::{SyntheticConfig, SyntheticTrainer};
-use seisly_ml::training::{TrainingConfig, Trainer};
+use seisly_ml::training::{Trainer, TrainingConfig};
 
 #[test]
 fn test_synthetic_data_generation() {

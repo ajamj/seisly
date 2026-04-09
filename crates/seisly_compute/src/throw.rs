@@ -102,10 +102,8 @@ fn barycentric_coords(
         return None;
     }
 
-    let alpha =
-        ((v1[1] - v2[1]) * (x - v2[0]) + (v2[0] - v1[0]) * (y - v2[1])) / denom;
-    let beta =
-        ((v2[1] - v0[1]) * (x - v2[0]) + (v0[0] - v2[0]) * (y - v2[1])) / denom;
+    let alpha = ((v1[1] - v2[1]) * (x - v2[0]) + (v2[0] - v1[0]) * (y - v2[1])) / denom;
+    let beta = ((v2[1] - v0[1]) * (x - v2[0]) + (v0[0] - v2[0]) * (y - v2[1])) / denom;
     let gamma = 1.0 - alpha - beta;
 
     // Point is inside triangle if all barycentric coords are in [0, 1]
@@ -343,7 +341,10 @@ fn zero_crossings(signal: &[f32]) -> Vec<usize> {
     for i in 1..signal.len() {
         let prev_sign = signal[i - 1].total_cmp(&0.0);
         let curr_sign = signal[i].total_cmp(&0.0);
-        if prev_sign != std::cmp::Ordering::Equal && curr_sign != std::cmp::Ordering::Equal && prev_sign != curr_sign {
+        if prev_sign != std::cmp::Ordering::Equal
+            && curr_sign != std::cmp::Ordering::Equal
+            && prev_sign != curr_sign
+        {
             crossings.push(i);
         }
     }
@@ -428,7 +429,11 @@ mod tests {
         let result = calculate_throw_cross_correlation(&volume, &fault_mask, dt_ms, 15);
 
         // Fault point should have non-zero throw
-        assert!(result.throw_map[2][2] > 0.0, "Expected throw > 0 at fault point, got {}", result.throw_map[2][2]);
+        assert!(
+            result.throw_map[2][2] > 0.0,
+            "Expected throw > 0 at fault point, got {}",
+            result.throw_map[2][2]
+        );
     }
 
     #[test]

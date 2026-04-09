@@ -10,14 +10,14 @@ impl PoissonsRatio {
         let vp2 = vp * vp;
         let vs2 = vs * vs;
         let denominator = 2.0 * (vp2 - vs2);
-        
+
         if denominator.abs() < 1e-10 {
             0.25 // Default value
         } else {
             (vp2 - 2.0 * vs2) / denominator
         }
     }
-    
+
     /// Compute from lambda and mu (Lamé parameters)
     pub fn from_lame(lambda: f32, mu: f32) -> f32 {
         let denominator = 2.0 * (lambda + mu);
@@ -41,7 +41,7 @@ impl VpVsRatio {
             vp / vs
         }
     }
-    
+
     /// Interpret Vp/Vs ratio
     pub fn interpret(vp_vs: f32) -> &'static str {
         if vp_vs < 1.5 {
@@ -101,14 +101,17 @@ mod tests {
     fn test_poissons_ratio_typical() {
         // Typical sandstone: Vp=3000, Vs=1800
         let sigma = PoissonsRatio::from_vp_vs(3000.0, 1800.0);
-        assert!(sigma > 0.2 && sigma < 0.3, "Typical Poisson's ratio for sandstone");
+        assert!(
+            sigma > 0.2 && sigma < 0.3,
+            "Typical Poisson's ratio for sandstone"
+        );
     }
 
     #[test]
     fn test_vp_vs_ratio_sand() {
         let vp_vs = VpVsRatio::compute(3000.0, 1800.0);
         assert!((vp_vs - 1.67).abs() < 0.1);
-        
+
         let interpretation = VpVsRatio::interpret(vp_vs);
         assert!(interpretation.contains("Sand"));
     }
@@ -117,7 +120,7 @@ mod tests {
     fn test_vp_vs_ratio_gas() {
         let vp_vs = VpVsRatio::compute(2500.0, 1200.0);
         assert!(vp_vs > 2.0);
-        
+
         let interpretation = VpVsRatio::interpret(vp_vs);
         assert!(interpretation.contains("Gas"));
     }

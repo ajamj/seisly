@@ -1,6 +1,6 @@
-use pyo3::prelude::*;
-use numpy::{PyArrayDyn, PyArrayMethods};
 use ndarray::ArrayViewD;
+use numpy::{PyArrayDyn, PyArrayMethods};
+use pyo3::prelude::*;
 
 /// Size threshold for SHM transfer (1 MB in bytes)
 const SHM_SIZE_THRESHOLD: usize = 1024 * 1024;
@@ -16,9 +16,7 @@ pub fn share_with_python<'py>(
         .map_err(|e: ndarray::ShapeError| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
 
     // Safety: The caller must ensure the data slice outlives the NumPy array
-    let array = unsafe {
-        PyArrayDyn::borrow_from_array_bound(&view, py.None().into_bound(py))
-    };
+    let array = unsafe { PyArrayDyn::borrow_from_array_bound(&view, py.None().into_bound(py)) };
     Ok(array)
 }
 

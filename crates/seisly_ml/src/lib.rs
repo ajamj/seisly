@@ -10,4 +10,4 @@ pub mod training;
 pub use cnn::HorizonCNN;
 pub use synthetic::{SyntheticConfig, SyntheticTrainer};
 pub use tracker::AutoTracker;
-pub use training::{TrainingConfig, Trainer};
+pub use training::{Trainer, TrainingConfig};

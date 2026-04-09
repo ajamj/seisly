@@ -1,17 +1,12 @@
 use eframe::egui;
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::interpretation::{
-    Fault,
-    HistoryManager,
-    Horizon,
-    InterpretationState,
-    VelocityState,
-    WellState,
+    Fault, HistoryManager, Horizon, InterpretationState, VelocityState, WellState,
 };
+use crate::ui::layout::{SeislyTabViewer, Tab};
 use crate::ui::style::{self, ThemeManager};
-use crate::ui::layout::{Tab, SeislyTabViewer};
 use crate::widgets::crossplot::CrossPlotWidget;
 use crate::widgets::fault_properties_panel::FaultPropertiesPanel;
 use crate::widgets::horizon_properties_panel::HorizonPropertiesPanel;
@@ -137,16 +132,15 @@ impl SeislyApp {
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
         let mut theme_manager = ThemeManager::new();
-        if let Some(theme_name) = cc.storage
-            .and_then(|s| s.get_string("seisly_theme")) {
+        if let Some(theme_name) = cc.storage.and_then(|s| s.get_string("seisly_theme")) {
             theme_manager.set_theme(&theme_name);
         }
 
         style::apply_theme(&cc.egui_ctx, &theme_manager.current_theme);
-        
+
         let mut interpretation = InterpretationState::new();
         let target_format = cc.wgpu_render_state.as_ref().map(|rs| rs.target_format);
-        
+
         // Default data
         let h_id = Uuid::new_v4();
         let mut horizon = Horizon::new("Horizon A".to_string(), [0.0, 1.0, 0.0, 0.7]);
@@ -171,7 +165,12 @@ impl SeislyApp {
             }
         }
 
-        let provider = InMemoryProvider { data, inline_range, crossline_range, sample_count };
+        let provider = InMemoryProvider {
+            data,
+            inline_range,
+            crossline_range,
+            sample_count,
+        };
         let volume = Some(std::sync::Arc::new(SeismicVolume::new(Box::new(provider))));
 
         let mut viewport = ViewportWidget::new();
@@ -188,7 +187,8 @@ impl SeislyApp {
         let mut plugin_manager = PluginManager::new();
         let _ = plugin_manager.discover(std::path::Path::new("plugins"));
 
-        let mut tree = cc.storage
+        let mut tree = cc
+            .storage
             .and_then(|s| s.get_string("seisly_dock_tree"))
             .and_then(|json| serde_json::from_str(&json).ok())
             .unwrap_or_else(Self::default_tree);
@@ -199,7 +199,8 @@ impl SeislyApp {
             tree.main_surface_mut().push_to_focused_leaf(Tab::Logs);
         }
 
-        let (show_activity_bar, show_sidebar, show_bottom_panel, active_sidebar_tab) = cc.storage
+        let (show_activity_bar, show_sidebar, show_bottom_panel, active_sidebar_tab) = cc
+            .storage
             .and_then(|s| s.get_string("seisly_ui_state"))
             .and_then(|json| serde_json::from_str::<(bool, bool, bool, SidebarTab)>(&json).ok())
             .unwrap_or((true, true, true, SidebarTab::Explorer));
@@ -212,14 +213,16 @@ impl SeislyApp {
             let queue = wgpu_state.queue.clone();
             let tx_gpu = tx.clone();
             let egui_ctx = cc.egui_ctx.clone();
-            
+
             std::thread::spawn(move || {
                 log::info!("Initializing GPU Computer from shared device...");
                 let result = GpuAttributeComputer::from_device(device, queue);
                 match result {
                     Ok(computer) => {
                         log::info!("GPU Computer initialized from shared state.");
-                        let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(std::sync::Arc::new(computer))));
+                        let _ = tx_gpu.send(AppMessage::GpuInitialized(Ok(std::sync::Arc::new(
+                            computer,
+                        ))));
                     }
                     Err(e) => {
                         log::warn!("Shared GPU init failed: {}. Falling back to CPU.", e);
@@ -307,7 +310,9 @@ impl SeislyApp {
     }
 
     fn render_activity_bar(&mut self, ctx: &egui::Context) {
-        if !self.show_activity_bar { return; }
+        if !self.show_activity_bar {
+            return;
+        }
         let theme_bg = self.theme_manager.current_theme.activity_bar_bg;
         let active_icon_color = self.theme_manager.current_theme.activity_bar_active_icon;
         let inactive_icon_color = self.theme_manager.current_theme.activity_bar_inactive_icon;
@@ -318,56 +323,124 @@ impl SeislyApp {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(8.0);
-                    self.activity_button(ui, SidebarTab::Explorer, egui::include_image!("../assets/icons/files.svg"), "Explorer", "📁");
-                    self.activity_button(ui, SidebarTab::Interpretation, egui::include_image!("../assets/icons/horizon.svg"), "Interpretation", "🌊");
-                    self.activity_button(ui, SidebarTab::QI, egui::include_image!("../assets/icons/qi.svg"), "Quantitative Interpretation", "🎯");
-                    self.activity_button(ui, SidebarTab::TimeLapse, egui::include_image!("../assets/icons/time_lapse.svg"), "4D Monitoring", "🕒");
-                    self.activity_button(ui, SidebarTab::Search, egui::include_image!("../assets/icons/search.svg"), "Search", "🔍");
-                    self.activity_button(ui, SidebarTab::Diagnostics, egui::include_image!("../assets/icons/terminal.svg"), "Diagnostics", "📋");
-                    
+                    self.activity_button(
+                        ui,
+                        SidebarTab::Explorer,
+                        egui::include_image!("../assets/icons/files.svg"),
+                        "Explorer",
+                        "📁",
+                    );
+                    self.activity_button(
+                        ui,
+                        SidebarTab::Interpretation,
+                        egui::include_image!("../assets/icons/horizon.svg"),
+                        "Interpretation",
+                        "🌊",
+                    );
+                    self.activity_button(
+                        ui,
+                        SidebarTab::QI,
+                        egui::include_image!("../assets/icons/qi.svg"),
+                        "Quantitative Interpretation",
+                        "🎯",
+                    );
+                    self.activity_button(
+                        ui,
+                        SidebarTab::TimeLapse,
+                        egui::include_image!("../assets/icons/time_lapse.svg"),
+                        "4D Monitoring",
+                        "🕒",
+                    );
+                    self.activity_button(
+                        ui,
+                        SidebarTab::Search,
+                        egui::include_image!("../assets/icons/search.svg"),
+                        "Search",
+                        "🔍",
+                    );
+                    self.activity_button(
+                        ui,
+                        SidebarTab::Diagnostics,
+                        egui::include_image!("../assets/icons/terminal.svg"),
+                        "Diagnostics",
+                        "📋",
+                    );
+
                     ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                         ui.add_space(8.0);
                         let settings_icon = egui::include_image!("../assets/icons/settings.svg");
-                        let tint = if self.show_settings { active_icon_color } else { inactive_icon_color };
-                        if ui.add(egui::ImageButton::new(egui::Image::new(settings_icon).tint(tint)).frame(false))
+                        let tint = if self.show_settings {
+                            active_icon_color
+                        } else {
+                            inactive_icon_color
+                        };
+                        if ui
+                            .add(
+                                egui::ImageButton::new(egui::Image::new(settings_icon).tint(tint))
+                                    .frame(false),
+                            )
                             .on_hover_text("Settings")
-                            .clicked() { 
-                            self.show_settings = !self.show_settings; 
+                            .clicked()
+                        {
+                            self.show_settings = !self.show_settings;
                         }
-                        self.activity_button(ui, SidebarTab::Extensions, egui::include_image!("../assets/icons/fault.svg"), "Plugins", "🧩");
+                        self.activity_button(
+                            ui,
+                            SidebarTab::Extensions,
+                            egui::include_image!("../assets/icons/fault.svg"),
+                            "Plugins",
+                            "🧩",
+                        );
                     });
                 });
             });
     }
 
-    fn activity_button(&mut self, ui: &mut egui::Ui, tab: SidebarTab, icon: egui::ImageSource<'_>, tooltip: &str, fallback: &str) {
-        let is_active = (self.show_sidebar && self.active_sidebar_tab == tab) || (tab == SidebarTab::Diagnostics && self.show_bottom_panel);
+    fn activity_button(
+        &mut self,
+        ui: &mut egui::Ui,
+        tab: SidebarTab,
+        icon: egui::ImageSource<'_>,
+        tooltip: &str,
+        fallback: &str,
+    ) {
+        let is_active = (self.show_sidebar && self.active_sidebar_tab == tab)
+            || (tab == SidebarTab::Diagnostics && self.show_bottom_panel);
         let theme = &self.theme_manager.current_theme;
-        let tint = if is_active { theme.activity_bar_active_icon } else { theme.activity_bar_inactive_icon };
-        
+        let tint = if is_active {
+            theme.activity_bar_active_icon
+        } else {
+            theme.activity_bar_inactive_icon
+        };
+
         // Create a fixed size for the activity button
         let button_size = egui::vec2(28.0, 28.0);
         let (rect, response) = ui.allocate_exact_size(button_size, egui::Sense::click());
-        
+
         // Hover and Click behavior
         let response = response.on_hover_text(tooltip);
         if response.clicked() {
             if tab == SidebarTab::Diagnostics {
                 self.show_bottom_panel = !self.show_bottom_panel;
             } else {
-                if is_active { self.show_sidebar = false; }
-                else { self.show_sidebar = true; self.active_sidebar_tab = tab; }
+                if is_active {
+                    self.show_sidebar = false;
+                } else {
+                    self.show_sidebar = true;
+                    self.active_sidebar_tab = tab;
+                }
             }
         }
 
         // Draw background if hovered
         if response.hovered() {
-            ui.painter().rect_filled(rect, 4.0, theme.side_bar_bg.linear_multiply(1.5));
+            ui.painter()
+                .rect_filled(rect, 4.0, theme.side_bar_bg.linear_multiply(1.5));
         }
 
         // Try to draw image
         let image = egui::Image::new(icon).tint(tint);
-        
+
         // Use a heuristic: if we're in a situation where icons fail (user reported this),
         // we'll draw the fallback ONLY if we don't have a better way to detect failure.
         // For now, let's make the fallback much smaller and only draw it if needed.
@@ -375,39 +448,55 @@ impl SeislyApp {
         image.paint_at(ui, rect);
 
         // Heuristic: If icons are warning signs, they usually have a specific color or size.
-        // But since we can't easily detect the "red warning" from here, 
+        // But since we can't easily detect the "red warning" from here,
         // let's just make the fallback optional or use a different strategy.
         // Fix: Use a dedicated UI helper that handles the transition.
-        
+
         if is_active {
             ui.painter().rect_filled(
-                egui::Rect::from_min_max(egui::pos2(rect.min.x - 4.0, rect.min.y + 4.0), egui::pos2(rect.min.x - 2.0, rect.max.y - 4.0)),
-                0.0, theme.accent
+                egui::Rect::from_min_max(
+                    egui::pos2(rect.min.x - 4.0, rect.min.y + 4.0),
+                    egui::pos2(rect.min.x - 2.0, rect.max.y - 4.0),
+                ),
+                0.0,
+                theme.accent,
             );
         }
     }
 
     fn render_sidebar(&mut self, ctx: &egui::Context) {
-        if !self.show_sidebar { return; }
+        if !self.show_sidebar {
+            return;
+        }
         let theme = self.theme_manager.current_theme.clone();
         let active_tab = self.active_sidebar_tab;
         egui::SidePanel::left("sidebar")
             .default_width(crate::ui::style::spacing::SIDEBAR_DEFAULT_WIDTH)
             .resizable(true)
-            .frame(egui::Frame::none().fill(theme.side_bar_bg).inner_margin(8.0))
+            .frame(
+                egui::Frame::none()
+                    .fill(theme.side_bar_bg)
+                    .inner_margin(8.0),
+            )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(match active_tab {
-                        SidebarTab::Explorer => "EXPLORER",
-                        SidebarTab::Interpretation => "INTERPRETATION",
-                        SidebarTab::QI => "QUANTITATIVE INTERPRETATION",
-                        SidebarTab::TimeLapse => "4D MONITORING",
-                        SidebarTab::Search => "SEARCH",
-                        SidebarTab::Diagnostics => "DIAGNOSTICS",
-                        SidebarTab::Extensions => "PLUGINS",
-                    }).strong().color(theme.side_bar_header_fg));
+                    ui.label(
+                        egui::RichText::new(match active_tab {
+                            SidebarTab::Explorer => "EXPLORER",
+                            SidebarTab::Interpretation => "INTERPRETATION",
+                            SidebarTab::QI => "QUANTITATIVE INTERPRETATION",
+                            SidebarTab::TimeLapse => "4D MONITORING",
+                            SidebarTab::Search => "SEARCH",
+                            SidebarTab::Diagnostics => "DIAGNOSTICS",
+                            SidebarTab::Extensions => "PLUGINS",
+                        })
+                        .strong()
+                        .color(theme.side_bar_header_fg),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("X").clicked() { self.show_sidebar = false; }
+                        if ui.button("X").clicked() {
+                            self.show_sidebar = false;
+                        }
                     });
                 });
                 ui.separator();
@@ -416,8 +505,12 @@ impl SeislyApp {
                     SidebarTab::Interpretation => self.render_interpretation_panel(ui),
                     SidebarTab::QI => self.qi_panel.ui(ui, &mut self.gpu_computer, &self.tx, ctx),
                     SidebarTab::TimeLapse => self.time_lapse_panel.ui(ui, &self.seismic_volumes),
-                    SidebarTab::Search => { ui.label("Search implementation coming soon..."); },
-                    SidebarTab::Diagnostics => { ui.label("Diagnostics (Logs) are shown in the bottom panel."); },
+                    SidebarTab::Search => {
+                        ui.label("Search implementation coming soon...");
+                    }
+                    SidebarTab::Diagnostics => {
+                        ui.label("Diagnostics (Logs) are shown in the bottom panel.");
+                    }
                     SidebarTab::Extensions => self.render_plugins(ui),
                 }
             });
@@ -427,7 +520,8 @@ impl SeislyApp {
         ui.collapsing("Horizons", |ui| {
             if ui.button("Add Horizon").clicked() {
                 let name = format!("Horizon {}", self.interpretation.horizons.len() + 1);
-                self.interpretation.add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
+                self.interpretation
+                    .add_horizon(Horizon::new(name, [1.0, 1.0, 0.0, 0.7]));
             }
             let mut to_remove = None;
             for horizon in &mut self.interpretation.horizons {
@@ -437,15 +531,20 @@ impl SeislyApp {
                         self.interpretation.active_horizon_id = Some(horizon.id);
                     }
                     ui.checkbox(&mut horizon.is_visible, "");
-                    if ui.button("Delete").clicked() { to_remove = Some(horizon.id); }
+                    if ui.button("Delete").clicked() {
+                        to_remove = Some(horizon.id);
+                    }
                 });
             }
-            if let Some(id) = to_remove { self.interpretation.horizons.retain(|h| h.id != id); }
+            if let Some(id) = to_remove {
+                self.interpretation.horizons.retain(|h| h.id != id);
+            }
         });
         ui.collapsing("Faults", |ui| {
             if ui.button("Add Fault").clicked() {
                 let name = format!("Fault {}", self.interpretation.faults.len() + 1);
-                self.interpretation.add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
+                self.interpretation
+                    .add_fault(Fault::new(name, [1.0, 0.0, 0.0, 0.5]));
             }
             let mut to_remove = None;
             for fault in &mut self.interpretation.faults {
@@ -455,15 +554,25 @@ impl SeislyApp {
                         self.interpretation.active_fault_id = Some(fault.id);
                     }
                     ui.checkbox(&mut fault.is_visible, "");
-                    if ui.button("Delete").clicked() { to_remove = Some(fault.id); }
+                    if ui.button("Delete").clicked() {
+                        to_remove = Some(fault.id);
+                    }
                 });
             }
-            if let Some(id) = to_remove { self.interpretation.faults.retain(|f| f.id != id); }
+            if let Some(id) = to_remove {
+                self.interpretation.faults.retain(|f| f.id != id);
+            }
         });
     }
 
     pub fn render_viewport(&mut self, ui: &mut egui::Ui) {
-        self.viewport.ui(ui, &mut self.interpretation, &mut self.history, &self.velocity, self.volume.as_ref());
+        self.viewport.ui(
+            ui,
+            &mut self.interpretation,
+            &mut self.history,
+            &self.velocity,
+            self.volume.as_ref(),
+        );
     }
 
     pub fn render_project_explorer(&mut self, ui: &mut egui::Ui) {
@@ -527,11 +636,14 @@ impl SeislyApp {
 
                 if let Some(curve_id) = self.well_panel.selected_curve_id {
                     if let Some(log) = well.logs.iter().find(|l| l.id == curve_id) {
-                        let points: egui_plot::PlotPoints = log.data.iter().zip(log.depths.iter())
+                        let points: egui_plot::PlotPoints = log
+                            .data
+                            .iter()
+                            .zip(log.depths.iter())
                             .filter(|(&val, _)| val != -999.25 && !val.is_nan()) // Filter null values
                             .map(|(&val, &depth)| [val as f64, -depth as f64]) // Negative depth so 0 is at top
                             .collect();
-                            
+
                         let line = egui_plot::Line::new(points).name(&log.mnemonic);
 
                         egui_plot::Plot::new("well_log_plot")
@@ -554,7 +666,8 @@ impl SeislyApp {
     }
 
     pub fn render_plugins(&mut self, ui: &mut egui::Ui) {
-        self.plugin_panel.ui(ui, &mut self.plugin_manager, &mut self.plugin_results);
+        self.plugin_panel
+            .ui(ui, &mut self.plugin_manager, &mut self.plugin_results);
     }
 
     pub fn render_crossplot(&mut self, ui: &mut egui::Ui) {
@@ -575,28 +688,42 @@ impl SeislyApp {
                 }
             });
             ui.separator();
-            egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-                if let Ok(buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
-                    for entry in buffer.entries() {
-                        let color = match entry.level {
-                            log::Level::Error => egui::Color32::RED,
-                            log::Level::Warn => egui::Color32::YELLOW,
-                            _ => ui.visuals().text_color(),
-                        };
-                        ui.horizontal(|ui| {
-                            ui.label(egui::RichText::new(format!("[{}]", entry.timestamp.format("%H:%M:%S"))).weak());
-                            ui.label(egui::RichText::new(format!("{:?}", entry.level)).color(color).strong());
-                            ui.label(&entry.message);
-                        });
+            egui::ScrollArea::vertical()
+                .stick_to_bottom(true)
+                .show(ui, |ui| {
+                    if let Ok(buffer) = crate::diagnostics::GLOBAL_LOGS.lock() {
+                        for entry in buffer.entries() {
+                            let color = match entry.level {
+                                log::Level::Error => egui::Color32::RED,
+                                log::Level::Warn => egui::Color32::YELLOW,
+                                _ => ui.visuals().text_color(),
+                            };
+                            ui.horizontal(|ui| {
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "[{}]",
+                                        entry.timestamp.format("%H:%M:%S")
+                                    ))
+                                    .weak(),
+                                );
+                                ui.label(
+                                    egui::RichText::new(format!("{:?}", entry.level))
+                                        .color(color)
+                                        .strong(),
+                                );
+                                ui.label(&entry.message);
+                            });
+                        }
                     }
-                }
-            });
+                });
         });
     }
 
     #[allow(dead_code)]
     fn calculate_volumetrics(&mut self) {
-        if self.interpretation.selected_horizon_ids.len() < 2 { return; }
+        if self.interpretation.selected_horizon_ids.len() < 2 {
+            return;
+        }
     }
 
     #[allow(dead_code)]
@@ -638,12 +765,13 @@ impl SeislyApp {
         {
             self.import_state = ImportState::Scanning;
             self.is_busy = true;
-            self.busy_message = format!("Scanning: {}", path.file_name().unwrap().to_string_lossy());
-            
+            self.busy_message =
+                format!("Scanning: {}", path.file_name().unwrap().to_string_lossy());
+
             let path_clone = path.clone();
             let tx = self.tx.clone();
             let egui_ctx = ctx.clone();
-            
+
             std::thread::spawn(move || {
                 match seisly_io::segy::parser::parse_metadata(&path_clone) {
                     Ok(metadata) => {
@@ -669,7 +797,11 @@ impl SeislyApp {
             match seisly_io::las::parser::LasParser::read(&path) {
                 Ok(mut well) => {
                     if well.name.is_empty() {
-                        well.name = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                        well.name = path
+                            .file_stem()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string();
                     }
                     self.wells.active_well_id = Some(well.id);
                     self.wells.wells.push(well);
@@ -697,19 +829,21 @@ impl eframe::App for SeislyApp {
                     self.is_busy = false;
                     self.import_state = ImportState::Idle;
                 }
-                AppMessage::GpuInitialized(result) => {
-                    match result {
-                        Ok(computer) => {
-                            log::info!("GPU Accelerator initialized successfully.");
-                            self.gpu_computer = Some(computer);
-                        }
-                        Err(e) => {
-                            log::warn!("GPU Initialization failed: {}. Falling back to CPU.", e);
-                        }
+                AppMessage::GpuInitialized(result) => match result {
+                    Ok(computer) => {
+                        log::info!("GPU Accelerator initialized successfully.");
+                        self.gpu_computer = Some(computer);
                     }
-                }
+                    Err(e) => {
+                        log::warn!("GPU Initialization failed: {}. Falling back to CPU.", e);
+                    }
+                },
                 AppMessage::GpuAttributeResult(name, data) => {
-                    log::info!("GPU computation '{}' finished with {} samples.", name, data.len());
+                    log::info!(
+                        "GPU computation '{}' finished with {} samples.",
+                        name,
+                        data.len()
+                    );
                     self.is_busy = false;
                 }
                 AppMessage::VolumeReady(volume) => {
@@ -721,7 +855,7 @@ impl eframe::App for SeislyApp {
         }
 
         crate::ui::shortcuts::handle_shortcuts(ctx, self);
-        
+
         let theme = self.theme_manager.current_theme.clone();
         if theme.name != self.last_theme_name {
             style::apply_theme(ctx, &theme);
@@ -730,40 +864,72 @@ impl eframe::App for SeislyApp {
 
         // 1. Menu Bar
         egui::TopBottomPanel::top("menu_bar")
-            .frame(egui::Frame::none().fill(theme.side_bar_bg).inner_margin(4.0))
+            .frame(
+                egui::Frame::none()
+                    .fill(theme.side_bar_bg)
+                    .inner_margin(4.0),
+            )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     // Quick access tools
                     let icon_tint = theme.activity_bar_inactive_icon;
-                    
-                    if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/icons/undo.svg")).tint(icon_tint)).frame(false))
+
+                    if ui
+                        .add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/icons/undo.svg"))
+                                    .tint(icon_tint),
+                            )
+                            .frame(false),
+                        )
                         .on_hover_text("Undo (Ctrl+Z)")
-                        .clicked() {
+                        .clicked()
+                    {
                         self.history.undo(&mut self.interpretation);
                     }
-                    
-                    if ui.add(egui::Button::image(egui::Image::new(egui::include_image!("../assets/icons/redo.svg")).tint(icon_tint)).frame(false))
+
+                    if ui
+                        .add(
+                            egui::Button::image(
+                                egui::Image::new(egui::include_image!("../assets/icons/redo.svg"))
+                                    .tint(icon_tint),
+                            )
+                            .frame(false),
+                        )
                         .on_hover_text("Redo (Ctrl+Y)")
-                        .clicked() {
+                        .clicked()
+                    {
                         self.history.redo(&mut self.interpretation);
                     }
-                    
+
                     ui.separator();
 
                     ui.menu_button("File", |ui| {
-                        if ui.button("New Project").clicked() { self.new_project(); }
-                        if ui.button("Open Project").clicked() { self.open_project(); }
-                        if ui.button("Save Project").clicked() { self.save_project(); }
+                        if ui.button("New Project").clicked() {
+                            self.new_project();
+                        }
+                        if ui.button("Open Project").clicked() {
+                            self.open_project();
+                        }
+                        if ui.button("Save Project").clicked() {
+                            self.save_project();
+                        }
                         ui.separator();
-                        if ui.button("Import Seismic").clicked() { self.import_seismic(ctx); }
-                        if ui.button("Exit").clicked() { ctx.send_viewport_cmd(egui::ViewportCommand::Close); }
+                        if ui.button("Import Seismic").clicked() {
+                            self.import_seismic(ctx);
+                        }
+                        if ui.button("Exit").clicked() {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
                     });
                     ui.menu_button("View", |ui| {
                         ui.checkbox(&mut self.show_activity_bar, "Activity Bar");
                         ui.checkbox(&mut self.show_sidebar, "Side Bar");
                         ui.checkbox(&mut self.show_bottom_panel, "Bottom Panel");
                         ui.separator();
-                        if ui.button("Reset Layout").clicked() { self.tree = Self::default_tree(); }
+                        if ui.button("Reset Layout").clicked() {
+                            self.tree = Self::default_tree();
+                        }
                         if ui.button(self.theme_manager.icon()).clicked() {
                             self.theme_manager.toggle();
                         }
@@ -784,7 +950,8 @@ impl eframe::App for SeislyApp {
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     let status_text = if self.volume.is_some() {
-                        if let Some(vol_entry) = self.seismic_volumes.iter().find(|v| v.is_visible) {
+                        if let Some(vol_entry) = self.seismic_volumes.iter().find(|v| v.is_visible)
+                        {
                             format!("Volume: {}", vol_entry.name)
                         } else {
                             "Seismic data loaded".to_string()
@@ -792,18 +959,31 @@ impl eframe::App for SeislyApp {
                     } else {
                         "No seismic data loaded".to_string()
                     };
-                    ui.label(egui::RichText::new(&status_text).color(theme.status_bar_fg).size(10.0).monospace());
+                    ui.label(
+                        egui::RichText::new(&status_text)
+                            .color(theme.status_bar_fg)
+                            .size(10.0)
+                            .monospace(),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         let right_text = if let Some(v) = &self.volume {
                             let (min_il, max_il) = v.provider.inline_range();
                             let (min_xl, max_xl) = v.provider.crossline_range();
                             let samples = v.provider.sample_count();
-                            format!("IL:{}-{} XL:{}-{} S:{}", min_il, max_il, min_xl, max_xl, samples)
+                            format!(
+                                "IL:{}-{} XL:{}-{} S:{}",
+                                min_il, max_il, min_xl, max_xl, samples
+                            )
                         } else {
                             String::new()
                         };
                         if !right_text.is_empty() {
-                            ui.label(egui::RichText::new(&right_text).color(theme.status_bar_fg).size(10.0).monospace());
+                            ui.label(
+                                egui::RichText::new(&right_text)
+                                    .color(theme.status_bar_fg)
+                                    .size(10.0)
+                                    .monospace(),
+                            );
                         }
                     });
                 });
@@ -819,7 +999,9 @@ impl eframe::App for SeislyApp {
                     ui.horizontal(|ui| {
                         ui.label(egui::RichText::new("LOGS").strong());
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button("X").clicked() { self.show_bottom_panel = false; }
+                            if ui.button("X").clicked() {
+                                self.show_bottom_panel = false;
+                            }
                         });
                     });
                     ui.separator();
@@ -865,11 +1047,16 @@ impl eframe::App for SeislyApp {
                     });
                     ui.add_space(10.0);
                     ui.horizontal(|ui| {
-                        if ui.button("Cancel").clicked() { self.import_state = ImportState::Idle; }
+                        if ui.button("Cancel").clicked() {
+                            self.import_state = ImportState::Idle;
+                        }
                         if ui.button("Confirm Import").clicked() {
-                            let name = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_else(|| "Unknown".to_string());
+                            let name = path
+                                .file_stem()
+                                .map(|s| s.to_string_lossy().to_string())
+                                .unwrap_or_else(|| "Unknown".to_string());
                             log::info!("Confirming import for seismic volume: {}", name);
-                            
+
                             // 1. Add to project metadata immediately
                             self.seismic_volumes.push(SeismicVolumeEntry {
                                 id: Uuid::new_v4().to_string(),
@@ -890,12 +1077,14 @@ impl eframe::App for SeislyApp {
                                 match seisly_io::segy::mmap::MmappedSegy::new(&path_clone) {
                                     Ok(segy) => {
                                         log::info!("Successfully mapped seismic volume: {}", name);
-                                        let volume = std::sync::Arc::new(SeismicVolume::new(Box::new(segy)));
+                                        let volume =
+                                            std::sync::Arc::new(SeismicVolume::new(Box::new(segy)));
                                         let _ = tx_clone.send(AppMessage::VolumeReady(volume));
                                     }
                                     Err(e) => {
                                         log::error!("Failed to map seismic volume {}: {}", name, e);
-                                        let _ = tx_clone.send(AppMessage::ScanFailed(e.to_string()));
+                                        let _ =
+                                            tx_clone.send(AppMessage::ScanFailed(e.to_string()));
                                     }
                                 }
                                 ctx_clone.request_repaint();
@@ -924,9 +1113,17 @@ impl eframe::App for SeislyApp {
         if let Ok(json) = serde_json::to_string(&self.tree) {
             storage.set_string("seisly_dock_tree", json);
         }
-        if let Ok(json) = serde_json::to_string(&(self.show_activity_bar, self.show_sidebar, self.show_bottom_panel, self.active_sidebar_tab)) {
+        if let Ok(json) = serde_json::to_string(&(
+            self.show_activity_bar,
+            self.show_sidebar,
+            self.show_bottom_panel,
+            self.active_sidebar_tab,
+        )) {
             storage.set_string("seisly_ui_state", json);
         }
-        storage.set_string("seisly_theme", self.theme_manager.current_theme.name.clone());
+        storage.set_string(
+            "seisly_theme",
+            self.theme_manager.current_theme.name.clone(),
+        );
     }
 }

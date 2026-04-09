@@ -119,7 +119,7 @@ pub mod spacing {
     pub const SIDEBAR_DEFAULT_WIDTH: f32 = 260.0;
     pub const BOTTOM_PANEL_DEFAULT_HEIGHT: f32 = 200.0;
     pub const STATUS_BAR_HEIGHT: f32 = 22.0;
-    
+
     pub const ITEM_SPACING: f32 = 4.0;
     pub const BUTTON_PADDING: f32 = 6.0;
 }
@@ -152,7 +152,7 @@ pub mod typography {
 /// Apply theme to egui context
 pub fn apply_theme(ctx: &egui::Context, theme: &Theme) {
     let mut style = (*ctx.style()).clone();
-    
+
     let mut visuals = if theme.is_dark {
         Visuals::dark()
     } else {
@@ -168,7 +168,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: &Theme) {
     visuals.widgets.hovered.bg_fill = theme.hover_bg;
     visuals.widgets.active.bg_fill = theme.selection_bg;
     visuals.override_text_color = Some(theme.text_primary);
-    
+
     style.visuals = visuals;
     style.spacing.item_spacing = egui::vec2(spacing::ITEM_SPACING, spacing::ITEM_SPACING);
     style.spacing.button_padding = egui::vec2(spacing::BUTTON_PADDING, spacing::BUTTON_PADDING);
@@ -208,7 +208,7 @@ impl ThemeManager {
 
     pub fn icon(&self) -> &'static str {
         if self.current_theme.is_dark {
-            "☀"  // Sun for dark mode
+            "☀" // Sun for dark mode
         } else {
             "☾" // Moon for light mode
         }

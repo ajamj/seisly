@@ -5,10 +5,10 @@
 pub struct ProductionData {
     pub well_name: String,
     pub date: String,
-    pub oil_rate: f32,    // STB/day
-    pub gas_rate: f32,    // MSCF/day
-    pub water_rate: f32,  // STB/day
-    pub pressure: f32,    // psi
+    pub oil_rate: f32,   // STB/day
+    pub gas_rate: f32,   // MSCF/day
+    pub water_rate: f32, // STB/day
+    pub pressure: f32,   // psi
 }
 
 impl ProductionData {
@@ -21,7 +21,7 @@ impl ProductionData {
             self.water_rate / total_liquid
         }
     }
-    
+
     /// Compute gas-oil ratio (GOR)
     pub fn gor(&self) -> f32 {
         if self.oil_rate.abs() < 1e-10 {
@@ -40,25 +40,28 @@ pub struct ProductionTimeline {
 
 impl ProductionTimeline {
     pub fn new(well_name: String) -> Self {
-        Self { well_name, data: Vec::new() }
+        Self {
+            well_name,
+            data: Vec::new(),
+        }
     }
-    
+
     pub fn add(&mut self, data: ProductionData) {
         self.data.push(data);
     }
-    
+
     /// Get cumulative production
     pub fn cumulative(&self) -> (f32, f32, f32) {
         let mut oil = 0.0;
         let mut gas = 0.0;
         let mut water = 0.0;
-        
+
         for d in &self.data {
             oil += d.oil_rate;
             gas += d.gas_rate;
             water += d.water_rate;
         }
-        
+
         (oil, gas, water)
     }
 }
@@ -70,13 +73,15 @@ pub struct ProductionIntegration {
 
 impl ProductionIntegration {
     pub fn new() -> Self {
-        Self { timelines: Vec::new() }
+        Self {
+            timelines: Vec::new(),
+        }
     }
-    
+
     pub fn add_well(&mut self, timeline: ProductionTimeline) {
         self.timelines.push(timeline);
     }
-    
+
     /// Correlate production changes with 4D signal
     pub fn correlate_with_4d(&self, _4d_signal: &[f32]) -> f32 {
         // Simplified correlation
@@ -84,7 +89,7 @@ impl ProductionIntegration {
         if _4d_signal.is_empty() {
             return 0.0;
         }
-        
+
         let signal_strength: f32 = _4d_signal.iter().map(|x| x.abs()).sum();
         signal_strength / _4d_signal.len() as f32
     }
@@ -104,7 +109,7 @@ mod tests {
             water_rate: 200.0,
             pressure: 3000.0,
         };
-        
+
         let wc = data.water_cut();
         assert!((wc - 0.2).abs() < 0.01); // 20% water cut
     }
@@ -119,7 +124,7 @@ mod tests {
             water_rate: 100.0,
             pressure: 3000.0,
         };
-        
+
         let gor = data.gor();
         assert!((gor - 2.0).abs() < 0.01); // 2 MSCF/STB
     }
@@ -143,7 +148,7 @@ mod tests {
             water_rate: 150.0,
             pressure: 2800.0,
         });
-        
+
         let (oil, gas, water) = timeline.cumulative();
         assert!((oil - 1900.0).abs() < 0.01);
         assert!((gas - 1100.0).abs() < 0.01);

@@ -10,7 +10,7 @@ pub struct QiPanel {
     mid_amplitude: f32,
     far_angle: f32,
     far_amplitude: f32,
-    
+
     // Elastic State
     vp: f32,
     vs: f32,
@@ -33,16 +33,22 @@ impl Default for QiPanel {
     }
 }
 
-use std::sync::Arc;
-use std::sync::mpsc::Sender;
 use crate::app::AppMessage;
+use std::sync::mpsc::Sender;
+use std::sync::Arc;
 
 impl QiPanel {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn ui(&mut self, ui: &mut egui::Ui, gpu_computer: &mut Option<Arc<seisly_attributes_gpu::GpuAttributeComputer>>, tx: &Sender<AppMessage>, ctx: &egui::Context) {
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        gpu_computer: &mut Option<Arc<seisly_attributes_gpu::GpuAttributeComputer>>,
+        tx: &Sender<AppMessage>,
+        ctx: &egui::Context,
+    ) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.vertical(|ui| {
                 ui.add_space(8.0);
@@ -57,7 +63,7 @@ impl QiPanel {
                     ui.add(egui::Slider::new(&mut self.near_angle, 0.0..=90.0));
                     ui.label("Near Amplitude");
                     ui.add(egui::DragValue::new(&mut self.near_amplitude).speed(0.01));
-                    
+
                     ui.add_space(4.0);
                     ui.label("Mid Angle (°)");
                     ui.add(egui::Slider::new(&mut self.mid_angle, 0.0..=90.0));
@@ -73,7 +79,7 @@ impl QiPanel {
                     ui.add_space(8.0);
                     let avo = AvoAnalysis::new(
                         vec![self.near_angle, self.mid_angle, self.far_angle],
-                        vec![self.near_amplitude, self.mid_amplitude, self.far_amplitude]
+                        vec![self.near_amplitude, self.mid_amplitude, self.far_amplitude],
                     );
 
                     let class = avo.classify();
@@ -86,7 +92,11 @@ impl QiPanel {
 
                     ui.horizontal(|ui| {
                         ui.label("Classification:");
-                        ui.label(egui::RichText::new(format!("{:?}", class)).color(color).strong());
+                        ui.label(
+                            egui::RichText::new(format!("{:?}", class))
+                                .color(color)
+                                .strong(),
+                        );
                     });
                     ui.label(format!("Intercept (P): {:.4}", avo.intercept()));
                     ui.label(format!("Gradient (G): {:.4}", avo.gradient()));
@@ -118,30 +128,41 @@ impl QiPanel {
                     ui.label(format!("Vp/Vs Ratio: {:.2}", vp_vs));
                     ui.label(format!("Poisson's Ratio: {:.3}", poisson));
                     ui.add_space(4.0);
-                    ui.label(egui::RichText::new(format!("Lithology: {}", interpretation)).italics().weak());
+                    ui.label(
+                        egui::RichText::new(format!("Lithology: {}", interpretation))
+                            .italics()
+                            .weak(),
+                    );
                 });
 
                 ui.add_space(16.0);
                 ui.separator();
                 ui.add_space(8.0);
                 ui.label(egui::RichText::new("Advanced Attributes").strong());
-                
+
                 let gpu_available = gpu_computer.is_some();
                 ui.add_enabled_ui(gpu_available, |ui| {
-                    if ui.button("Compute RMS (GPU)").on_disabled_hover_text("GPU not initialized").clicked() {
+                    if ui
+                        .button("Compute RMS (GPU)")
+                        .on_disabled_hover_text("GPU not initialized")
+                        .clicked()
+                    {
                         if let Some(computer) = gpu_computer {
                             // Mock trace data for demonstration
                             let trace = vec![0.1, 0.5, 1.0, 0.5, 0.1];
                             let tx_clone = tx.clone();
                             let ctx_clone = ctx.clone();
-                            
+
                             // Note: GpuAttributeComputer might not be thread-safe depending on implementation
                             // but we'll assume it is for now or use a dedicated method.
                             // In a real implementation, we'd probably pass a reference to a shared computer.
                             std::thread::spawn(move || {
                                 // Since computer is not Clone, we'd need a different strategy in reality.
                                 // For the purpose of this UI wiring task, we log the dispatch.
-                                let _ = tx_clone.send(AppMessage::GpuAttributeResult("RMS".to_string(), vec![0.0; 100]));
+                                let _ = tx_clone.send(AppMessage::GpuAttributeResult(
+                                    "RMS".to_string(),
+                                    vec![0.0; 100],
+                                ));
                                 ctx_clone.request_repaint();
                             });
                         }

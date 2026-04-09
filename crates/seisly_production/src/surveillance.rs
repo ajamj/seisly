@@ -1,6 +1,6 @@
 //! Reservoir Surveillance
 
-use seisly_4d::{TimeLapseAnalysis, ProductionTimeline};
+use seisly_4d::{ProductionTimeline, TimeLapseAnalysis};
 
 /// Reservoir Surveillance - monitor reservoir performance
 pub struct ReservoirSurveillance {
@@ -15,42 +15,42 @@ impl ReservoirSurveillance {
             time_lapse_surveys: Vec::new(),
         }
     }
-    
+
     /// Add production timeline
     pub fn add_production_data(&mut self, timeline: ProductionTimeline) {
         self.production_data.push(timeline);
     }
-    
+
     /// Add time-lapse survey
     pub fn add_survey(&mut self, survey: Vec<f32>) {
         self.time_lapse_surveys.push(survey);
     }
-    
+
     /// Generate surveillance report
     pub fn generate_report(&self) -> SurveillanceReport {
         let production_summary = self.summarize_production();
         let four_d_summary = self.analyze_4d_changes();
-        
+
         SurveillanceReport {
             production_summary,
             four_d_summary,
             recommendations: self.generate_recommendations(),
         }
     }
-    
+
     /// Summarize production performance
     fn summarize_production(&self) -> ProductionSummary {
         let mut total_oil = 0.0;
         let mut total_gas = 0.0;
         let mut total_water = 0.0;
-        
+
         for timeline in &self.production_data {
             let (oil, gas, water): (f32, f32, f32) = timeline.cumulative();
             total_oil += oil;
             total_gas += gas;
             total_water += water;
         }
-        
+
         ProductionSummary {
             total_oil,
             total_gas,
@@ -62,7 +62,7 @@ impl ReservoirSurveillance {
             },
         }
     }
-    
+
     /// Analyze 4D changes
     fn analyze_4d_changes(&self) -> FourDSummary {
         if self.time_lapse_surveys.len() < 2 {
@@ -72,21 +72,21 @@ impl ReservoirSurveillance {
                 change_location: None,
             };
         }
-        
+
         let mut nrms_values = Vec::new();
         let mut max_change = 0.0f32;
         let mut max_location = None;
-        
+
         for i in 1..self.time_lapse_surveys.len() {
             let analysis = TimeLapseAnalysis::new(
                 self.time_lapse_surveys[0].clone(),
                 self.time_lapse_surveys[i].clone(),
                 0.004,
             );
-            
+
             let nrms = analysis.nrms();
             nrms_values.push(nrms);
-            
+
             // Find location of maximum change
             let diff = analysis.difference();
             for (idx, &val) in diff.iter().enumerate() {
@@ -97,36 +97,36 @@ impl ReservoirSurveillance {
                 }
             }
         }
-        
+
         FourDSummary {
             nrms_average: nrms_values.iter().sum::<f32>() / nrms_values.len() as f32,
             max_change,
             change_location: max_location,
         }
     }
-    
+
     /// Generate recommendations
     fn generate_recommendations(&self) -> Vec<String> {
         let mut recommendations = Vec::new();
-        
+
         let prod_summary = self.summarize_production();
         let four_d_summary = self.analyze_4d_changes();
-        
+
         // High water cut recommendation
         if prod_summary.water_cut > 0.5 {
             recommendations.push("High water cut detected - consider water shut-off".to_string());
         }
-        
+
         // 4D change recommendation
         if four_d_summary.nrms_average > 20.0 {
             recommendations.push("Significant 4D changes - review sweep efficiency".to_string());
         }
-        
+
         // Infills recommendation
         if self.production_data.len() < 5 && four_d_summary.max_change > 0.5 {
             recommendations.push("Consider infill drilling in areas with unswept oil".to_string());
         }
-        
+
         recommendations
     }
 }
@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn test_production_summary() {
         let mut surveillance = ReservoirSurveillance::new();
-        
+
         let mut timeline = ProductionTimeline::new("Well-1".to_string());
         timeline.add(ProductionData {
             well_name: "Well-1".to_string(),
@@ -178,11 +178,11 @@ mod tests {
             water_rate: 100.0,
             pressure: 3000.0,
         });
-        
+
         surveillance.add_production_data(timeline);
-        
+
         let report = surveillance.generate_report();
-        
+
         assert!((report.production_summary.total_oil - 1000.0).abs() < 0.01);
         assert!(report.production_summary.water_cut < 0.2);
     }
@@ -190,22 +190,22 @@ mod tests {
     #[test]
     fn test_four_d_analysis() {
         let mut surveillance = ReservoirSurveillance::new();
-        
+
         let baseline = vec![1.0; 1000];
         let monitor = vec![1.1; 1000];
-        
+
         surveillance.add_survey(baseline);
         surveillance.add_survey(monitor);
-        
+
         let report = surveillance.generate_report();
-        
+
         assert!(report.four_d_summary.nrms_average > 0.0);
     }
 
     #[test]
     fn test_recommendations() {
         let mut surveillance = ReservoirSurveillance::new();
-        
+
         // Add high water cut well
         let mut timeline = ProductionTimeline::new("Well-1".to_string());
         timeline.add(ProductionData {
@@ -216,11 +216,11 @@ mod tests {
             water_rate: 900.0, // High water
             pressure: 3000.0,
         });
-        
+
         surveillance.add_production_data(timeline);
-        
+
         let report = surveillance.generate_report();
-        
+
         assert!(!report.recommendations.is_empty());
         assert!(report.recommendations.iter().any(|r| r.contains("water")));
     }

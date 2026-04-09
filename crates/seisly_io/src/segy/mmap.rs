@@ -96,10 +96,12 @@ impl MmappedSegy {
 
         let sample_interval = mmap
             .get_u16_be(3216)
-            .ok_or_else(|| anyhow::anyhow!("Failed to read sample interval"))? as f32;
+            .ok_or_else(|| anyhow::anyhow!("Failed to read sample interval"))?
+            as f32;
         let sample_count = mmap
             .get_u16_be(3220)
-            .ok_or_else(|| anyhow::anyhow!("Failed to read sample count"))? as usize;
+            .ok_or_else(|| anyhow::anyhow!("Failed to read sample count"))?
+            as usize;
         let format = mmap
             .get_u16_be(3224)
             .ok_or_else(|| anyhow::anyhow!("Failed to read format"))?;

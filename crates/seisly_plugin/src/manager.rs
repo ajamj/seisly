@@ -1,8 +1,8 @@
 use crate::api::{Plugin, PluginCommand, PluginError, Result};
 use crate::manifest::PluginManifest;
 use std::collections::HashMap;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
 /// A temporary placeholder for a discovered but not yet fully loaded plugin
 pub struct PlaceholderPlugin {
@@ -25,7 +25,10 @@ impl Plugin for PlaceholderPlugin {
     }
 
     fn description(&self) -> &str {
-        self.manifest.description.as_deref().unwrap_or("No description")
+        self.manifest
+            .description
+            .as_deref()
+            .unwrap_or("No description")
     }
 
     fn commands(&self) -> Vec<PluginCommand> {
@@ -33,7 +36,9 @@ impl Plugin for PlaceholderPlugin {
     }
 
     fn execute(&self, _cmd: &str, _args: serde_json::Value) -> Result<serde_json::Value> {
-        Err(PluginError::ExecutionError("Plugin not yet fully loaded".to_string()))
+        Err(PluginError::ExecutionError(
+            "Plugin not yet fully loaded".to_string(),
+        ))
     }
 }
 
@@ -49,26 +54,33 @@ impl PluginManager {
             plugins: HashMap::new(),
         }
     }
-    
+
     /// Register a plugin
     pub fn register(&mut self, plugin: Box<dyn Plugin>) {
         let name = plugin.name().to_string();
         self.plugins.insert(name, plugin);
     }
-    
+
     /// Execute a plugin command
-    pub fn execute(&self, name: &str, cmd: &str, args: serde_json::Value) -> Result<serde_json::Value> {
-        let plugin = self.plugins.get(name)
+    pub fn execute(
+        &self,
+        name: &str,
+        cmd: &str,
+        args: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        let plugin = self
+            .plugins
+            .get(name)
             .ok_or_else(|| PluginError::NotFound(name.to_string()))?;
-        
+
         plugin.execute(cmd, args)
     }
-    
+
     /// List all registered plugins
     pub fn list_plugins(&self) -> Vec<&str> {
         self.plugins.keys().map(|s| s.as_str()).collect()
     }
-    
+
     /// Discover plugins from directory
     pub fn discover(&mut self, path: &Path) -> Result<()> {
         if !path.exists() || !path.is_dir() {
@@ -85,7 +97,10 @@ impl PluginManager {
                         Ok(manifest) => {
                             #[cfg(feature = "python")]
                             {
-                                self.register(Box::new(crate::python_plugin::PythonPlugin::new(manifest, manifest_path)));
+                                self.register(Box::new(crate::python_plugin::PythonPlugin::new(
+                                    manifest,
+                                    manifest_path,
+                                )));
                             }
                             #[cfg(not(feature = "python"))]
                             {
@@ -101,7 +116,7 @@ impl PluginManager {
         }
         Ok(())
     }
-    
+
     /// Get plugin count
     pub fn plugin_count(&self) -> usize {
         self.plugins.len()

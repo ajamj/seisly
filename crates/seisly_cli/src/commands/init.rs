@@ -8,10 +8,7 @@ pub fn execute(name: String, path: Option<String>, crs: u32) -> anyhow::Result<(
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(format!("{}.sf", name)));
 
-    println!(
-        "Creating Seisly project '{}' at {:?}",
-        name, project_path
-    );
+    println!("Creating Seisly project '{}' at {:?}", name, project_path);
 
     let project = Project::create(project_path, name.clone(), format!("EPSG:{}", crs))?;
 

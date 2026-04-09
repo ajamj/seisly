@@ -1,6 +1,6 @@
-use std::sync::{Arc, Mutex};
-use lazy_static::lazy_static;
 use chrono::{DateTime, Local};
+use lazy_static::lazy_static;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -51,7 +51,12 @@ impl log::Log for SeislyLogger {
 
     fn log(&self, record: &log::Record) {
         // Filter out noisy wgpu maintenance logs
-        if record.target().starts_with("wgpu_core::device") && record.args().to_string().contains("waiting for submission index") {
+        if record.target().starts_with("wgpu_core::device")
+            && record
+                .args()
+                .to_string()
+                .contains("waiting for submission index")
+        {
             return;
         }
 
@@ -65,7 +70,12 @@ impl log::Log for SeislyLogger {
                 buffer.push(entry);
             }
             // Also print to console for development
-            println!("[{}] {} - {}", Local::now().format("%H:%M:%S"), record.level(), record.args());
+            println!(
+                "[{}] {} - {}",
+                Local::now().format("%H:%M:%S"),
+                record.level(),
+                record.args()
+            );
         }
     }
 
@@ -75,6 +85,5 @@ impl log::Log for SeislyLogger {
 static LOGGER: SeislyLogger = SeislyLogger;
 
 pub fn init() -> Result<(), log::SetLoggerError> {
-    log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(log::LevelFilter::Info))
+    log::set_logger(&LOGGER).map(|()| log::set_max_level(log::LevelFilter::Info))
 }

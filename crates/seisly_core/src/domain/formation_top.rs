@@ -27,12 +27,7 @@ pub struct FormationTop {
 
 impl FormationTop {
     /// Create a new formation top
-    pub fn new(
-        well_id: Uuid,
-        name: String,
-        depth_md: f64,
-        formation: Option<String>,
-    ) -> Self {
+    pub fn new(well_id: Uuid, name: String, depth_md: f64, formation: Option<String>) -> Self {
         Self {
             id: Uuid::new_v4(),
             well_id,
@@ -73,12 +68,7 @@ mod tests {
     #[test]
     fn test_formation_top_serialization() {
         let well_id = Uuid::new_v4();
-        let top = FormationTop::new(
-            well_id,
-            "Top Seal".to_string(),
-            1800.5,
-            None,
-        );
+        let top = FormationTop::new(well_id, "Top Seal".to_string(), 1800.5, None);
 
         let json = serde_json::to_string(&top).unwrap();
         assert!(json.contains("Top Seal"));
@@ -88,13 +78,8 @@ mod tests {
     #[test]
     fn test_with_comments_builder() {
         let well_id = Uuid::new_v4();
-        let top = FormationTop::new(
-            well_id,
-            "Top Reservoir".to_string(),
-            2500.0,
-            None,
-        )
-        .with_comments("Test comment".to_string());
+        let top = FormationTop::new(well_id, "Top Reservoir".to_string(), 2500.0, None)
+            .with_comments("Test comment".to_string());
 
         assert_eq!(top.comments, Some("Test comment".to_string()));
     }
@@ -118,7 +103,7 @@ mod tests {
 
         // IDs will be different (UUIDs are unique)
         assert_ne!(top1.id, top2.id);
-        
+
         // But we can manually compare other fields
         assert_eq!(top1.well_id, top2.well_id);
         assert_eq!(top1.name, top2.name);

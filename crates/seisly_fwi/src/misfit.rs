@@ -20,12 +20,12 @@ impl MisfitFunction for L2Misfit {
         }
         misfit / 2.0
     }
-    
+
     fn gradient(&self, predicted: &Array2<f32>, observed: &Array2<f32>) -> Array2<f32> {
         // Gradient of L2: d/dm = (predicted - observed)
         let mut grad = Array2::zeros(predicted.dim());
         for i in 0..predicted.len() {
-            grad.as_slice_mut().unwrap()[i] = 
+            grad.as_slice_mut().unwrap()[i] =
                 predicted.as_slice().unwrap()[i] - observed.as_slice().unwrap()[i];
         }
         grad
@@ -40,10 +40,10 @@ impl MisfitFunction for TravelTimeMisfit {
         // Simplified: pick first arrival times
         let t_pred = self.pick_first_arrival(predicted);
         let t_obs = self.pick_first_arrival(observed);
-        
+
         0.5 * (t_pred - t_obs).powi(2)
     }
-    
+
     fn gradient(&self, predicted: &Array2<f32>, _observed: &Array2<f32>) -> Array2<f32> {
         // TODO: Implement proper travel-time sensitivity kernel
         // For now, return zero gradient with correct dimensions to avoid panics
@@ -73,7 +73,7 @@ impl MisfitFunction for PhaseMisfit {
         // Simplified for now
         0.0
     }
-    
+
     fn gradient(&self, predicted: &Array2<f32>, _observed: &Array2<f32>) -> Array2<f32> {
         Array2::zeros(predicted.dim())
     }
@@ -93,7 +93,7 @@ impl MisfitFunction for EnvelopeMisfit {
         }
         misfit / 2.0
     }
-    
+
     fn gradient(&self, predicted: &Array2<f32>, observed: &Array2<f32>) -> Array2<f32> {
         let mut grad = Array2::zeros(predicted.dim());
         for i in 0..predicted.len() {
@@ -127,16 +127,18 @@ impl MisfitFunction for MultiMisfit {
         let l2 = L2Misfit.compute(predicted, observed);
         let tt = TravelTimeMisfit.compute(predicted, observed);
         let phase = PhaseMisfit.compute(predicted, observed);
-        
+
         self.l2_weight * l2 + self.travel_time_weight * tt + self.phase_weight * phase
     }
-    
+
     fn gradient(&self, predicted: &Array2<f32>, observed: &Array2<f32>) -> Array2<f32> {
         let grad_l2 = L2Misfit.gradient(predicted, observed);
         let grad_tt = TravelTimeMisfit.gradient(predicted, observed);
         let grad_phase = PhaseMisfit.gradient(predicted, observed);
-        
-        (&grad_l2 * self.l2_weight) + (&grad_tt * self.travel_time_weight) + (&grad_phase * self.phase_weight)
+
+        (&grad_l2 * self.l2_weight)
+            + (&grad_tt * self.travel_time_weight)
+            + (&grad_phase * self.phase_weight)
     }
 }
 
@@ -149,10 +151,10 @@ mod tests {
     fn test_l2_misfit() {
         let predicted = Array2::from_shape_vec((4, 1), vec![1.0, 2.0, 3.0, 4.0]).unwrap();
         let observed = Array2::from_shape_vec((4, 1), vec![1.1, 2.1, 3.1, 4.1]).unwrap();
-        
+
         let misfit = L2Misfit;
         let value = misfit.compute(&predicted, &observed);
-        
+
         assert!(value > 0.0);
         assert!(value < 1.0);
     }
@@ -161,10 +163,10 @@ mod tests {
     fn test_l2_gradient() {
         let predicted = Array2::from_shape_vec((3, 1), vec![1.0, 2.0, 3.0]).unwrap();
         let observed = Array2::from_shape_vec((3, 1), vec![0.0, 0.0, 0.0]).unwrap();
-        
+
         let misfit = L2Misfit;
         let grad = misfit.gradient(&predicted, &observed);
-        
+
         assert_eq!(grad.len(), 3);
         assert!(grad.iter().all(|&x| x > 0.0));
     }
@@ -173,10 +175,10 @@ mod tests {
     fn test_envelope_misfit() {
         let predicted = Array2::from_shape_vec((3, 1), vec![1.0, -2.0, 3.0]).unwrap();
         let observed = Array2::from_shape_vec((3, 1), vec![1.0, -2.0, 3.0]).unwrap();
-        
+
         let misfit = EnvelopeMisfit;
         let value = misfit.compute(&predicted, &observed);
-        
+
         assert!((value - 0.0).abs() < 1e-6); // Perfect match
     }
 
@@ -184,10 +186,10 @@ mod tests {
     fn test_multi_misfit() {
         let predicted = Array2::from_shape_vec((3, 1), vec![1.0, 2.0, 3.0]).unwrap();
         let observed = Array2::from_shape_vec((3, 1), vec![1.1, 2.1, 3.1]).unwrap();
-        
+
         let misfit = MultiMisfit::new(1.0, 0.1, 0.1);
         let value = misfit.compute(&predicted, &observed);
-        
+
         assert!(value > 0.0);
     }
 }

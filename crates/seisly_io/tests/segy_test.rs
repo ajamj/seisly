@@ -7,17 +7,17 @@ use tempfile::TempDir;
 fn test_segy_reader_open_and_read() {
     // Test with SegyWriter - create a file and read it back
     use seisly_io::segy::SegyWriter;
-    
+
     let temp_dir = TempDir::new().unwrap();
     let test_file = temp_dir.path().join("test.segy");
 
     // Create a test file with SegyWriter
     let mut writer = SegyWriter::new(
-        &test_file,
-        4000, // 4ms sample rate
+        &test_file, 4000, // 4ms sample rate
         5,    // 5 traces
         50,   // 50 samples per trace
-    ).unwrap();
+    )
+    .unwrap();
 
     // Write dummy traces
     for i in 0..5 {
@@ -45,7 +45,7 @@ fn test_segy_reader_error_handling() {
 
     // Verify it's an Io error
     match result {
-        Err(IoError::Io(_)) => {}, // Expected
+        Err(IoError::Io(_)) => {} // Expected
         Err(IoError::ParseError(_)) => panic!("Expected IO error, got ParseError"),
         Ok(_) => panic!("Expected error, got Ok"),
     }

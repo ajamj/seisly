@@ -1,3 +1,3 @@
 pub mod layout;
-pub mod style;
 pub mod shortcuts;
+pub mod style;

@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use seisly_attributes::amplitude::RmsAmplitude;
 use seisly_attributes::trait_def::SeismicAttribute;
 use seisly_attributes_gpu::GpuAttributeComputer;
@@ -11,16 +11,12 @@ fn generate_test_data(size: usize) -> Vec<f32> {
 fn benchmark_cpu_rms(c: &mut Criterion) {
     let attr = RmsAmplitude;
     let mut group = c.benchmark_group("CPU RMS");
-    
+
     for size in [1000, 10000, 100000].iter() {
         let trace = generate_test_data(*size);
-        group.bench_with_input(
-            BenchmarkId::from_parameter(size),
-            &trace,
-            |b, trace| {
-                b.iter(|| attr.compute(black_box(trace), black_box(11)));
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(size), &trace, |b, trace| {
+            b.iter(|| attr.compute(black_box(trace), black_box(11)));
+        });
     }
     group.finish();
 }
@@ -31,21 +27,17 @@ fn benchmark_gpu_rms(c: &mut Criterion) {
         Ok(c) => c,
         Err(_) => return, // Skip if no GPU available
     };
-    
+
     let mut group = c.benchmark_group("GPU RMS");
-    
+
     for size in [1000, 10000, 100000].iter() {
         let trace = generate_test_data(*size);
-        group.bench_with_input(
-            BenchmarkId::from_parameter(size),
-            &trace,
-            |b, trace| {
-                b.iter(|| {
-                    rt.block_on(computer.compute_rms_gpu(black_box(trace), black_box(11)))
-                        .unwrap()
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(size), &trace, |b, trace| {
+            b.iter(|| {
+                rt.block_on(computer.compute_rms_gpu(black_box(trace), black_box(11)))
+                    .unwrap()
+            });
+        });
     }
     group.finish();
 }

@@ -17,33 +17,33 @@ impl MultiHorizonTracker {
             stratigraphic_order: Vec::new(),
         }
     }
-    
+
     /// Add horizon to track
     pub fn add_horizon(&mut self, tracker: AutoTracker, name: String) {
         self.trackers.push(tracker);
         self.stratigraphic_order.push(name);
     }
-    
+
     /// Track all horizons with stratigraphic constraints
     pub fn track_all(&self, seismic: &dyn seisly_compute::seismic::TraceProvider) -> Vec<Surface> {
         let mut surfaces = Vec::new();
-        
+
         for (i, tracker) in self.trackers.iter().enumerate() {
             // Track from seed point
             // In production: use actual seed points
-            let surface = tracker.track(seismic, 50, 50, 1000).unwrap_or_else(|_| {
-                Surface::new(format!("Surface_{}", i), Crs::wgs84(), vec![])
-            });
-            
+            let surface = tracker
+                .track(seismic, 50, 50, 1000)
+                .unwrap_or_else(|_| Surface::new(format!("Surface_{}", i), Crs::wgs84(), vec![]));
+
             surfaces.push(surface);
         }
-        
+
         // Apply stratigraphic constraints
         self.apply_stratigraphic_constraints(&mut surfaces);
-        
+
         surfaces
     }
-    
+
     /// Ensure horizons don't cross (stratigraphic order)
     fn apply_stratigraphic_constraints(&self, surfaces: &mut [Surface]) {
         for i in 0..surfaces.len() {
@@ -56,7 +56,7 @@ impl MultiHorizonTracker {
             }
         }
     }
-    
+
     /// Prevent horizon crossing
     fn prevent_crossing(&self, _upper: &mut Surface, _lower: &mut Surface) {
         // Simplified: in production, implement proper surface editing
@@ -98,15 +98,15 @@ mod tests {
     #[test]
     fn test_add_horizon() {
         let mut tracker = MultiHorizonTracker::new();
-        
+
         let device = candle_core::Device::Cpu;
         let vb = VarBuilder::zeros(candle_core::DType::F32, &device);
-        
+
         tracker.add_horizon(
             AutoTracker::new(seisly_ml::HorizonCNN::new(vb).unwrap()),
             "Top Reservoir".to_string(),
         );
-        
+
         assert_eq!(tracker.stratigraphic_order.len(), 1);
     }
 }

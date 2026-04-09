@@ -9,9 +9,7 @@ pub struct BrickCache {
 impl BrickCache {
     /// Create a new cache with the specified maximum capacity (number of bricks).
     pub fn new(max_capacity: u64) -> Self {
-        let cache = Cache::builder()
-            .max_capacity(max_capacity)
-            .build();
+        let cache = Cache::builder().max_capacity(max_capacity).build();
         Self { cache }
     }
 

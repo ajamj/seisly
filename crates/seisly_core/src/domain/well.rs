@@ -78,14 +78,8 @@ impl Well {
     }
 
     pub fn add_log(&mut self, mnemonic: String, units: String, data: Vec<f32>, depths: Vec<f32>) {
-        let min_depth = *depths
-            .iter()
-            .min_by(|a, b| a.total_cmp(b))
-            .unwrap_or(&0.0);
-        let max_depth = *depths
-            .iter()
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(&0.0);
+        let min_depth = *depths.iter().min_by(|a, b| a.total_cmp(b)).unwrap_or(&0.0);
+        let max_depth = *depths.iter().max_by(|a, b| a.total_cmp(b)).unwrap_or(&0.0);
 
         self.logs.push(WellLog {
             id: Uuid::new_v4(),
@@ -112,14 +106,8 @@ impl Well {
 
 impl WellLog {
     pub fn new(mnemonic: String, units: String, data: Vec<f32>, depths: Vec<f32>) -> Self {
-        let min_depth = *depths
-            .iter()
-            .min_by(|a, b| a.total_cmp(b))
-            .unwrap_or(&0.0);
-        let max_depth = *depths
-            .iter()
-            .max_by(|a, b| a.total_cmp(b))
-            .unwrap_or(&0.0);
+        let min_depth = *depths.iter().min_by(|a, b| a.total_cmp(b)).unwrap_or(&0.0);
+        let max_depth = *depths.iter().max_by(|a, b| a.total_cmp(b)).unwrap_or(&0.0);
 
         Self {
             id: Uuid::new_v4(),

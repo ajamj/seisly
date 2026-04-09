@@ -7,14 +7,14 @@ use tempfile::TempDir;
 fn test_segy_writer_create_and_write() {
     let temp_dir = TempDir::new().unwrap();
     let temp_path = temp_dir.path().join("test.segy");
-    
+
     // Create writer with standard parameters
     let mut writer = SegyWriter::new(
-        &temp_path,
-        4000, // 4ms sample rate
+        &temp_path, 4000, // 4ms sample rate
         10,   // 10 traces
         100,  // 100 samples per trace
-    ).unwrap();
+    )
+    .unwrap();
 
     // Write dummy traces
     for i in 0..10 {
@@ -28,7 +28,7 @@ fn test_segy_writer_create_and_write() {
     use seisly_io::segy::SegyReader;
     let reader = SegyReader::open(&temp_path).unwrap();
     assert_eq!(reader.trace_count(), 10);
-    
+
     let trace = reader.read_trace(0).unwrap();
     assert_eq!(trace.len(), 100);
 }
@@ -37,13 +37,8 @@ fn test_segy_writer_create_and_write() {
 fn test_segy_writer_error_on_invalid_index() {
     let temp_dir = TempDir::new().unwrap();
     let temp_path = temp_dir.path().join("test.segy");
-    
-    let mut writer = SegyWriter::new(
-        &temp_path,
-        4000,
-        10,
-        100,
-    ).unwrap();
+
+    let mut writer = SegyWriter::new(&temp_path, 4000, 10, 100).unwrap();
 
     // Try to write trace out of bounds
     let data: Vec<f32> = vec![0.0; 100];

@@ -1,9 +1,9 @@
 //! Seismic Attributes Integration Tests
 
 use seisly_attributes::{
+    amplitude::{all_amplitude_attributes, MeanAmplitude, RmsAmplitude},
+    frequency::{all_frequency_attributes, DominantFrequency, InstantaneousFrequency},
     SeismicAttribute,
-    amplitude::{RmsAmplitude, MeanAmplitude, all_amplitude_attributes},
-    frequency::{InstantaneousFrequency, DominantFrequency, all_frequency_attributes},
 };
 
 #[test]
@@ -22,7 +22,7 @@ fn test_all_frequency_attributes_count() {
 fn test_amplitude_attribute_names() {
     let attrs = all_amplitude_attributes();
     let names: Vec<&str> = attrs.iter().map(|a| a.name()).collect();
-    
+
     assert!(names.contains(&"RMS Amplitude"));
     assert!(names.contains(&"Mean Amplitude"));
     assert!(names.contains(&"Max Amplitude"));
@@ -39,7 +39,7 @@ fn test_amplitude_attribute_names() {
 fn test_frequency_attribute_names() {
     let attrs = all_frequency_attributes();
     let names: Vec<&str> = attrs.iter().map(|a| a.name()).collect();
-    
+
     assert!(names.contains(&"Instantaneous Frequency"));
     assert!(names.contains(&"Dominant Frequency"));
     assert!(names.contains(&"Peak Frequency"));
@@ -58,10 +58,10 @@ fn test_rms_vs_mean() {
     let rms = RmsAmplitude;
     let mean = MeanAmplitude;
     let trace = vec![1.0, -2.0, 3.0, -4.0, 5.0];
-    
+
     let rms_result = rms.compute(&trace, 5);
     let mean_result = mean.compute(&trace, 5);
-    
+
     assert!(rms_result[0] >= mean_result[0].abs());
 }
 
@@ -70,7 +70,7 @@ fn test_instantaneous_phase_range() {
     let attr = InstantaneousFrequency;
     let trace = vec![1.0, 0.0, -1.0, 0.0, 1.0, 0.0, -1.0, 0.0];
     let result = attr.compute(&trace, 8);
-    
+
     // Phase should be in reasonable range
     assert!(result.iter().all(|&x| x.is_finite()));
 }

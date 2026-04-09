@@ -111,8 +111,16 @@ mod tests {
 
         // Test successful transaction
         let result = with_transaction(&mut conn, |tx| {
-            tx.execute("INSERT INTO datasets (id, type, name, crs_def, created_at) VALUES (?, ?, ?, ?, ?)",
-                       ["test1", "surface", "Test Surface", "EPSG:32648", "2026-04-01"])?;
+            tx.execute(
+                "INSERT INTO datasets (id, type, name, crs_def, created_at) VALUES (?, ?, ?, ?, ?)",
+                [
+                    "test1",
+                    "surface",
+                    "Test Surface",
+                    "EPSG:32648",
+                    "2026-04-01",
+                ],
+            )?;
             Ok(42i32)
         })?;
 
@@ -128,8 +136,16 @@ mod tests {
 
         // Test transaction rollback on error
         let test_result: Result<()> = with_transaction(&mut conn, |tx| {
-            tx.execute("INSERT INTO datasets (id, type, name, crs_def, created_at) VALUES (?, ?, ?, ?, ?)",
-                       ["test2", "surface", "Test Surface 2", "EPSG:32648", "2026-04-01"])?;
+            tx.execute(
+                "INSERT INTO datasets (id, type, name, crs_def, created_at) VALUES (?, ?, ?, ?, ?)",
+                [
+                    "test2",
+                    "surface",
+                    "Test Surface 2",
+                    "EPSG:32648",
+                    "2026-04-01",
+                ],
+            )?;
             // Simulate an error
             anyhow::bail!("Simulated error")
         });

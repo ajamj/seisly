@@ -9,19 +9,15 @@ pub struct ShmSegment {
 impl ShmSegment {
     /// Creates a new Shared Memory segment of the specified size.
     pub fn create(size: usize) -> Result<Self, ShmemError> {
-        let shmem = ShmemConf::new()
-            .size(size)
-            .create()?;
-        
+        let shmem = ShmemConf::new().size(size).create()?;
+
         Ok(Self { shmem })
     }
 
     /// Opens an existing Shared Memory segment by its ID.
     pub fn open(id: &str) -> Result<Self, ShmemError> {
-        let shmem = ShmemConf::new()
-            .os_id(id)
-            .open()?;
-        
+        let shmem = ShmemConf::new().os_id(id).open()?;
+
         Ok(Self { shmem })
     }
 
@@ -36,7 +32,7 @@ impl ShmSegment {
     }
 
     /// Writes data into the shared memory segment.
-    /// 
+    ///
     /// # Panics
     /// Panics if the data slice is larger than the segment size.
     pub fn write_data(&mut self, data: &[u8]) {
@@ -47,11 +43,14 @@ impl ShmSegment {
     }
 
     /// Reads data from the shared memory segment into the provided buffer.
-    /// 
+    ///
     /// # Panics
     /// Panics if the buffer is larger than the segment size.
     pub fn read_data(&self, buffer: &mut [u8]) {
-        assert!(buffer.len() <= self.shmem.len(), "Buffer too large for segment");
+        assert!(
+            buffer.len() <= self.shmem.len(),
+            "Buffer too large for segment"
+        );
         unsafe {
             ptr::copy_nonoverlapping(self.shmem.as_ptr(), buffer.as_mut_ptr(), buffer.len());
         }

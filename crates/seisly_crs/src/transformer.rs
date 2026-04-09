@@ -12,7 +12,10 @@ pub enum TransformError {
     #[error("PROJ library error: {0}")]
     ProjError(String),
     #[error("CRS transform not implemented: {source_crs} -> {target_crs}")]
-    NotImplemented { source_crs: String, target_crs: String },
+    NotImplemented {
+        source_crs: String,
+        target_crs: String,
+    },
 }
 
 /// Transformer between two CRS definitions
@@ -93,7 +96,10 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         match err {
-            TransformError::NotImplemented { source_crs, target_crs } => {
+            TransformError::NotImplemented {
+                source_crs,
+                target_crs,
+            } => {
                 assert!(!source_crs.is_empty());
                 assert!(!target_crs.is_empty());
             }

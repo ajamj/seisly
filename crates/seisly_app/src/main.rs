@@ -27,12 +27,13 @@ fn main() -> eframe::Result<()> {
             "Unknown panic".to_string()
         };
 
-        let location = panic_info.location()
+        let location = panic_info
+            .location()
             .map(|loc| format!(" at {}:{}", loc.file(), loc.line()))
             .unwrap_or_default();
-        
+
         let error_msg = format!("Seisly encountered a fatal error and must close.\n\nError: {}{}\n\nA report has been prepared for our engineering team.", message, location);
-        
+
         // Report to Sentry
         sentry::integrations::panic::panic_handler(panic_info);
 
@@ -56,5 +57,4 @@ fn main() -> eframe::Result<()> {
         native_options,
         Box::new(|cc| Ok(Box::new(SeislyApp::new(cc)))),
     )
-    }
-
+}

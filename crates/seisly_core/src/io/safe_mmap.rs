@@ -363,7 +363,10 @@ mod tests {
         assert_eq!(mmap.get(100), None); // Out of bounds
 
         // Test slice access
-        assert_eq!(mmap.get_slice(0, 5), Some(&[0x00, 0x01, 0x02, 0x03, 0x04][..]));
+        assert_eq!(
+            mmap.get_slice(0, 5),
+            Some(&[0x00, 0x01, 0x02, 0x03, 0x04][..])
+        );
         assert_eq!(mmap.get_slice(1, 3), Some(&[0x01, 0x02, 0x03][..]));
         assert_eq!(mmap.get_slice(0, 6), None); // Out of bounds
         assert_eq!(mmap.get_slice(100, 1), None); // Out of bounds
@@ -438,14 +441,18 @@ mod tests {
     #[test]
     fn test_safe_mmap_ext_array() {
         let mut tmp = NamedTempFile::new().unwrap();
-        tmp.write_all(&[0x00, 0x01, 0x02, 0x03, 0x04, 0x05]).unwrap();
+        tmp.write_all(&[0x00, 0x01, 0x02, 0x03, 0x04, 0x05])
+            .unwrap();
 
         let file = File::open(tmp.path()).unwrap();
         let mmap = SafeMmap::map(&file).unwrap();
 
         // Test byte array
         assert_eq!(mmap.get_array::<3>(0), Some([0x00, 0x01, 0x02]));
-        assert_eq!(mmap.get_array::<6>(0), Some([0x00, 0x01, 0x02, 0x03, 0x04, 0x05]));
+        assert_eq!(
+            mmap.get_array::<6>(0),
+            Some([0x00, 0x01, 0x02, 0x03, 0x04, 0x05])
+        );
         assert_eq!(mmap.get_array::<7>(0), None); // Out of bounds
     }
 }

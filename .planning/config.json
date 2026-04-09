@@ -1,0 +1,27 @@
+{
+  "workflow": {
+    "discuss_mode": "discuss",
+    "nyquist_validation_enabled": true,
+    "plan_checker_enabled": true,
+    "research_enabled": true,
+    "auto_advance": false,
+    "_auto_chain_active": false,
+    "text_mode": false,
+    "ui_phase": true,
+    "ui_safety_gate": true,
+    "nyquist_validation": true
+  },
+  "models": {
+    "researcher": "sonnet",
+    "planner": "opus",
+    "checker": "sonnet",
+    "executor": "sonnet",
+    "verifier": "sonnet"
+  },
+  "project": {
+    "name": "Seisly",
+    "language": "Rust",
+    "test_runner": "cargo test",
+    "linter": "clippy"
+  }
+}

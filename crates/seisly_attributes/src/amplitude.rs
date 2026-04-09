@@ -18,8 +18,10 @@ use crate::trait_def::SeismicAttribute;
 pub struct RmsAmplitude;
 
 impl SeismicAttribute for RmsAmplitude {
-    fn name(&self) -> &'static str { "RMS Amplitude" }
-    
+    fn name(&self) -> &'static str {
+        "RMS Amplitude"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -35,8 +37,10 @@ impl SeismicAttribute for RmsAmplitude {
 pub struct MeanAmplitude;
 
 impl SeismicAttribute for MeanAmplitude {
-    fn name(&self) -> &'static str { "Mean Amplitude" }
-    
+    fn name(&self) -> &'static str {
+        "Mean Amplitude"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -49,8 +53,10 @@ impl SeismicAttribute for MeanAmplitude {
 pub struct MaxAmplitude;
 
 impl SeismicAttribute for MaxAmplitude {
-    fn name(&self) -> &'static str { "Max Amplitude" }
-    
+    fn name(&self) -> &'static str {
+        "Max Amplitude"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -63,8 +69,10 @@ impl SeismicAttribute for MaxAmplitude {
 pub struct MinAmplitude;
 
 impl SeismicAttribute for MinAmplitude {
-    fn name(&self) -> &'static str { "Min Amplitude" }
-    
+    fn name(&self) -> &'static str {
+        "Min Amplitude"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -77,8 +85,10 @@ impl SeismicAttribute for MinAmplitude {
 pub struct StdDevAmplitude;
 
 impl SeismicAttribute for StdDevAmplitude {
-    fn name(&self) -> &'static str { "Standard Deviation" }
-    
+    fn name(&self) -> &'static str {
+        "Standard Deviation"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -95,8 +105,10 @@ impl SeismicAttribute for StdDevAmplitude {
 pub struct EnergyAmplitude;
 
 impl SeismicAttribute for EnergyAmplitude {
-    fn name(&self) -> &'static str { "Energy" }
-    
+    fn name(&self) -> &'static str {
+        "Energy"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -109,8 +121,10 @@ impl SeismicAttribute for EnergyAmplitude {
 pub struct AverageEnergy;
 
 impl SeismicAttribute for AverageEnergy {
-    fn name(&self) -> &'static str { "Average Energy" }
-    
+    fn name(&self) -> &'static str {
+        "Average Energy"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -126,8 +140,10 @@ impl SeismicAttribute for AverageEnergy {
 pub struct AbsoluteAmplitude;
 
 impl SeismicAttribute for AbsoluteAmplitude {
-    fn name(&self) -> &'static str { "Absolute Amplitude" }
-    
+    fn name(&self) -> &'static str {
+        "Absolute Amplitude"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -140,8 +156,10 @@ impl SeismicAttribute for AbsoluteAmplitude {
 pub struct MaxAbsoluteAmplitude;
 
 impl SeismicAttribute for MaxAbsoluteAmplitude {
-    fn name(&self) -> &'static str { "Max Absolute" }
-    
+    fn name(&self) -> &'static str {
+        "Max Absolute"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -154,8 +172,10 @@ impl SeismicAttribute for MaxAbsoluteAmplitude {
 pub struct SkewnessAmplitude;
 
 impl SeismicAttribute for SkewnessAmplitude {
-    fn name(&self) -> &'static str { "Skewness" }
-    
+    fn name(&self) -> &'static str {
+        "Skewness"
+    }
+
     fn compute(&self, trace: &[f32], window_size: usize) -> Vec<f32> {
         trace
             .windows(window_size)
@@ -164,15 +184,17 @@ impl SeismicAttribute for SkewnessAmplitude {
                 let mean = w.iter().sum::<f32>() / n;
                 let variance = w.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
                 let std_dev = variance.sqrt();
-                
+
                 if std_dev < 1e-10 {
                     return 0.0;
                 }
-                
-                let skew = w.iter()
+
+                let skew = w
+                    .iter()
                     .map(|x| ((x - mean) / std_dev).powi(3))
-                    .sum::<f32>() / n;
-                
+                    .sum::<f32>()
+                    / n;
+
                 skew
             })
             .collect()
@@ -204,7 +226,7 @@ mod tests {
         let attr = RmsAmplitude;
         let trace = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let result = attr.compute(&trace, 3);
-        
+
         assert_eq!(result.len(), 3);
         // RMS of [1,2,3] = sqrt((1+4+9)/3) = sqrt(4.67) ≈ 2.16
         assert!((result[0] - 2.16).abs() < 0.1);
@@ -215,7 +237,7 @@ mod tests {
         let attr = MeanAmplitude;
         let trace = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let result = attr.compute(&trace, 3);
-        
+
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], 2.0); // Mean of [1,2,3]
     }
@@ -225,7 +247,7 @@ mod tests {
         let attr = MaxAmplitude;
         let trace = vec![1.0, 5.0, 3.0, 2.0, 4.0];
         let result = attr.compute(&trace, 3);
-        
+
         assert_eq!(result[0], 5.0); // Max of [1,5,3]
     }
 
@@ -234,7 +256,7 @@ mod tests {
         let attr = StdDevAmplitude;
         let trace = vec![2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
         let result = attr.compute(&trace, 4);
-        
+
         assert!(!result.is_empty());
     }
 }

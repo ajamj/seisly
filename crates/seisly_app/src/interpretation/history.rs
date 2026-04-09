@@ -1,7 +1,7 @@
+use crate::interpretation::{FaultStick, InterpretationState, Pick};
+use seisly_core::Command;
 use std::any::Any;
 use uuid::Uuid;
-use crate::interpretation::{InterpretationState, Pick, FaultStick};
-use seisly_core::Command;
 
 pub struct HistoryManager {
     pub inner: seisly_core::UndoRedoStack,
@@ -41,7 +41,9 @@ impl AddPickCommand {
 }
 
 impl Command for AddPickCommand {
-    fn name(&self) -> &'static str { "Add Pick" }
+    fn name(&self) -> &'static str {
+        "Add Pick"
+    }
 
     fn execute(&mut self, target: &mut dyn Any) {
         if let Some(state) = target.downcast_mut::<InterpretationState>() {
@@ -72,7 +74,9 @@ impl AddFaultStickCommand {
 }
 
 impl Command for AddFaultStickCommand {
-    fn name(&self) -> &'static str { "Add Fault Stick" }
+    fn name(&self) -> &'static str {
+        "Add Fault Stick"
+    }
 
     fn execute(&mut self, target: &mut dyn Any) {
         if let Some(state) = target.downcast_mut::<InterpretationState>() {
@@ -108,7 +112,9 @@ impl AutoTrackCommand {
 }
 
 impl Command for AutoTrackCommand {
-    fn name(&self) -> &'static str { "Auto Track" }
+    fn name(&self) -> &'static str {
+        "Auto Track"
+    }
 
     fn execute(&mut self, target: &mut dyn Any) {
         if let Some(state) = target.downcast_mut::<InterpretationState>() {

@@ -11,60 +11,34 @@
 | v06 | Advanced Features (ML, Wells) | ✅ Complete | 2026-03-30 | 2026-03-31 |
 | v1.0 | Production Release | ✅ Complete | 2026-03-31 | 2026-03-31 |
 | v1.1 | Architectural Hardening | ✅ Complete | 2026-04-01 | 2026-04-01 |
+| v1.2 | Compilation & Phase 2 Integration | ✅ Complete | 2026-04-08 | 2026-04-08 |
+| v1.3 | Seismic Visualization & Plotting | 🏗️ Planning | 2026-04-08 | |
 
-## Current Phase: v1.2 (Next)
+## Current Phase: v1.3
 
-**Goal:** [To be planned]
+**Goal:** Implement a professional seismic plotting engine with real-time 2D slicing, variable intensity color mapping, and wiggle trace overlays.
 
-**Requirements:** [To be defined]
+**Requirements:**
+- **v1.3-visualization:** Real-time extraction and rendering of seismic slices (Inlines, Crosslines, Time Slices).
+- **v1.3-color-mapping:** Support for standard seismic colormaps (Blue-White-Red, Gray).
+- **v1.3-wiggle-plotting:** Optional wiggle-trace overlay for detailed structural interpretation.
+- **v1.3-performance:** Implement persistent sidecar indexing and O(1) grid mapping to eliminate SEG-Y import lag.
 
-**Plans:** [To be planned]
+**Plans:**
+- [v1.3-seismic-visualization](./phases/v1.3-seismic-visualization-PLAN.md)
 
 ---
 
 ## Completed Phases
+
+**v1.2-compilation** - ✅ Complete (2026-04-08)
+- Automated release build for x86_64-pc-windows-gnu.
+- Integration of Phase 2 features (QI, 4D, GPU Acceleration).
+- Async GPU initialization with shared-device state.
 
 **v1.1-hardening** - ✅ Complete (2026-04-01)
-- High-performance Shared Memory IPC for large seismic arrays
-- Worker resource hardening with heartbeat watchdog
-- SIGBUS protection via SafeMmap wrapper
-- Undo/Redo infrastructure for interpretation operations
-- Area-weighted normal computation for smooth shading
-- All 5 HARD requirements satisfied (100/100 health score)
+- High-performance Shared Memory IPC for large seismic arrays.
+- SIGBUS protection via SafeMmap wrapper.
+- Undo/Redo infrastructure for interpretation operations.
 
-**v1.0-production-release** - ✅ Complete
-
----
-
-## Completed Phases
-
-**v1.0-production-release** - ✅ Complete
-- Branding, Docs & Quality Audit.
-- Performance & Robustness improvements.
-- Secure Plugin Architecture (isolated Python workers).
-- Professional UI/UX with docking support.
-- Distribution via `cargo-dist`.
-
-**v06-advanced-features** - ✅ Complete
-- Integrated Plugin Manager UI.
-- High-performance zero-copy data bridge to NumPy.
-- PythonPlugin implementation with dynamic sys.path management.
-- Embedded Python interpreter using PyO3.
-
----
-
-## Deferred Items
-
-| Item | Original Phase | Reason | Target Phase |
-|------|----------------|--------|--------------|
-| (None) | - | - | - |
-
-## Key Decisions Log
-
-- **2026-04-01:** Implement Shared Memory IPC for large seismic arrays (v1.1-01).
-- **2026-04-01:** Adopt `memmap2` SIGBUS protection (v1.1-03).
-- **2026-03-31:** Switch to process-isolated Python worker model for plugin security (v1.0-03).
-- **2026-03-31:** Adopt `cargo-dist` for multi-platform distribution (v1.0-05).
-- **2026-03-28:** Project-per-database architecture (no multi-project single-db)
-- **2026-03-28:** PCA-based RBF for 3D fault modeling
-- **2026-03-28:** Click-and-drag sketch mode for fault picking
+... (rest of history remains)

@@ -91,7 +91,11 @@ impl Trainer {
     /// Arguments:
     /// - seismic_data: Input seismic tensor (num_traces, num_samples)
     /// - horizon_labels: Target horizon depths (num_traces, num_horizons)
-    pub fn train(&mut self, seismic_data: &Tensor, horizon_labels: &Tensor) -> Result<&TrainingStats> {
+    pub fn train(
+        &mut self,
+        seismic_data: &Tensor,
+        horizon_labels: &Tensor,
+    ) -> Result<&TrainingStats> {
         let start_time = std::time::Instant::now();
         let _device = seismic_data.device();
 
@@ -114,12 +118,8 @@ impl Trainer {
 
         for epoch in 0..self.config.epochs {
             // Shuffle data (simplified - in production use proper dataloader)
-            let epoch_loss = self.train_epoch(
-                seismic_data,
-                horizon_labels,
-                num_samples,
-                &mut optimizer,
-            )?;
+            let epoch_loss =
+                self.train_epoch(seismic_data, horizon_labels, num_samples, &mut optimizer)?;
 
             self.stats.loss_history.push(epoch_loss);
 

@@ -37,17 +37,29 @@ impl TimeLapsePanel {
                     .selected_text(self.base_volume_id.as_deref().unwrap_or("Select volume..."))
                     .show_ui(ui, |ui| {
                         for vol in volumes {
-                            ui.selectable_value(&mut self.base_volume_id, Some(vol.id.clone()), &vol.name);
+                            ui.selectable_value(
+                                &mut self.base_volume_id,
+                                Some(vol.id.clone()),
+                                &vol.name,
+                            );
                         }
                     });
 
                 ui.add_space(8.0);
                 ui.label("Monitor Survey:");
                 egui::ComboBox::from_id_salt("monitor_survey_selector")
-                    .selected_text(self.monitor_volume_id.as_deref().unwrap_or("Select volume..."))
+                    .selected_text(
+                        self.monitor_volume_id
+                            .as_deref()
+                            .unwrap_or("Select volume..."),
+                    )
                     .show_ui(ui, |ui| {
                         for vol in volumes {
-                            ui.selectable_value(&mut self.monitor_volume_id, Some(vol.id.clone()), &vol.name);
+                            ui.selectable_value(
+                                &mut self.monitor_volume_id,
+                                Some(vol.id.clone()),
+                                &vol.name,
+                            );
                         }
                     });
 
@@ -75,11 +87,25 @@ impl TimeLapsePanel {
                     ui.label("Results:");
                     ui.horizontal(|ui| {
                         ui.label("Normalized RMS (NRMS):");
-                        ui.label(egui::RichText::new(format!("{:.2}%", nrms)).color(egui::Color32::LIGHT_BLUE).strong());
+                        ui.label(
+                            egui::RichText::new(format!("{:.2}%", nrms))
+                                .color(egui::Color32::LIGHT_BLUE)
+                                .strong(),
+                        );
                     });
-                    
-                    let quality = if nrms < 10.0 { "Excellent" } else if nrms < 20.0 { "Good" } else { "Significant Change" };
-                    ui.label(egui::RichText::new(format!("Similarity: {}", quality)).weak().italics());
+
+                    let quality = if nrms < 10.0 {
+                        "Excellent"
+                    } else if nrms < 20.0 {
+                        "Good"
+                    } else {
+                        "Significant Change"
+                    };
+                    ui.label(
+                        egui::RichText::new(format!("Similarity: {}", quality))
+                            .weak()
+                            .italics(),
+                    );
                 }
 
                 ui.add_space(24.0);

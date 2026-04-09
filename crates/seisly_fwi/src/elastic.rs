@@ -1,7 +1,7 @@
 //! Elastic FWI Implementation (Vp + Vs inversion)
 
-use ndarray::{Array2, s};
 use crate::acoustic::{AcousticWaveSolver, Source};
+use ndarray::{s, Array2};
 
 /// Elastic Wave Solver (simplified)
 pub struct ElasticWaveSolver {
@@ -15,10 +15,24 @@ pub struct ElasticWaveSolver {
 }
 
 impl ElasticWaveSolver {
-    pub fn new(vp: Array2<f32>, vs: Array2<f32>, rho: Array2<f32>, dt: f32, dx: f32, dz: f32) -> Self {
-        Self { vp, vs, rho, dt, dx, dz }
+    pub fn new(
+        vp: Array2<f32>,
+        vs: Array2<f32>,
+        rho: Array2<f32>,
+        dt: f32,
+        dx: f32,
+        dz: f32,
+    ) -> Self {
+        Self {
+            vp,
+            vs,
+            rho,
+            dt,
+            dx,
+            dz,
+        }
     }
-    
+
     /// Forward modeling for elastic wave equation
     pub fn forward(&self, source: &Source, nt: usize) -> (Array2<f32>, Array2<f32>) {
         let acoustic = AcousticWaveSolver::new(self.vp.clone(), self.dt, self.dx, self.dz);
@@ -56,10 +70,15 @@ impl ElasticFWI {
             observed_s,
         }
     }
-    
-    pub fn misfit(&self, _source: &Source, _nt: usize) -> f32 { 0.0 }
+
+    pub fn misfit(&self, _source: &Source, _nt: usize) -> f32 {
+        0.0
+    }
     pub fn gradient(&self, _source: &Source, _nt: usize) -> (Array2<f32>, Array2<f32>) {
-        (Array2::zeros(self.solver.vp.dim()), Array2::zeros(self.solver.vs.dim()))
+        (
+            Array2::zeros(self.solver.vp.dim()),
+            Array2::zeros(self.solver.vs.dim()),
+        )
     }
     pub fn update(&mut self, _grad_vp: &Array2<f32>, _grad_vs: &Array2<f32>, _lr: f32) {}
 }

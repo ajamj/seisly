@@ -107,11 +107,7 @@ impl SegyWriter {
 
         // Create trace header for 2D seismic data
         // Using new_2d which sets: x_ensemble, y_ensemble, coordinate_scalar
-        let trace_header = TraceHeader::new_2d(
-            (index + 1) as i32,
-            (index + 1) as i32,
-            0,
-        );
+        let trace_header = TraceHeader::new_2d((index + 1) as i32, (index + 1) as i32, 0);
 
         // Write trace data (lossless since we're using f32)
         self.segy

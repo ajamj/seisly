@@ -2,10 +2,10 @@
 //!
 //! Production surveillance through time-lapse seismic analysis.
 
-pub mod timelapse;
-pub mod production;
 pub mod difference;
+pub mod production;
+pub mod timelapse;
 
-pub use timelapse::*;
-pub use production::*;
 pub use difference::*;
+pub use production::*;
+pub use timelapse::*;

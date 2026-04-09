@@ -6,9 +6,9 @@ use std::collections::{HashSet, VecDeque};
 
 use crate::cnn::HorizonCNN;
 use candle_core::{Device, Tensor};
+use seisly_compute::seismic::TraceProvider;
 use seisly_core::domain::surface::{Mesh, Surface};
 use seisly_core::Crs;
-use seisly_compute::seismic::TraceProvider;
 
 pub struct AutoTracker {
     #[allow(dead_code)]
@@ -117,11 +117,7 @@ impl AutoTracker {
             }
         };
 
-        Surface::new(
-            "AutoTracked Horizon".to_string(),
-            Crs::wgs84(),
-            vec![mesh],
-        )
+        Surface::new("AutoTracked Horizon".to_string(), Crs::wgs84(), vec![mesh])
     }
 
     /// Create a zero-filled patch for error cases
@@ -150,16 +146,21 @@ impl AutoTracker {
         let mut patch_data = Vec::with_capacity(self.patch_size * self.patch_size);
 
         for di in 0..self.patch_size {
-            let i = il.saturating_sub(half_patch as i32).saturating_add(di as i32);
+            let i = il
+                .saturating_sub(half_patch as i32)
+                .saturating_add(di as i32);
             let i = i.clamp(il_min, il_max);
-            
+
             for dj in 0..self.patch_size {
-                let j = xl.saturating_sub(half_patch as i32).saturating_add(dj as i32);
+                let j = xl
+                    .saturating_sub(half_patch as i32)
+                    .saturating_add(dj as i32);
                 let j = j.clamp(xl_min, xl_max);
-                
-                let trace = seismic.get_trace(i, j)
+
+                let trace = seismic
+                    .get_trace(i, j)
                     .unwrap_or_else(|| vec![0.0; sample_count]);
-                
+
                 let value = trace.get(sample_idx as usize).copied().unwrap_or(0.0);
                 patch_data.push(value);
             }

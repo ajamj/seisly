@@ -9,7 +9,11 @@ fn test_las_v3_reader_parse() {
     // Create temporary LAS 3.0 file
     let mut temp_file = NamedTempFile::new().unwrap();
     writeln!(temp_file, "~VERSION INFORMATION").unwrap();
-    writeln!(temp_file, " VERS. 3.0 : CWLS LOG ASCII STANDARD -VERSION 3.0").unwrap();
+    writeln!(
+        temp_file,
+        " VERS. 3.0 : CWLS LOG ASCII STANDARD -VERSION 3.0"
+    )
+    .unwrap();
     writeln!(temp_file, "~WELL INFORMATION").unwrap();
     writeln!(temp_file, " STRT.M 0.0 : START DEPTH").unwrap();
     writeln!(temp_file, " STOP.M 100.0 : STOP DEPTH").unwrap();
@@ -33,7 +37,7 @@ fn test_las_v3_reader_parse() {
     assert_eq!(well.logs[0].mnemonic, "DEPT");
     assert!(well.logs.iter().any(|log| log.mnemonic == "GR"));
     assert!(well.logs.iter().any(|log| log.mnemonic == "DT"));
-    
+
     // Check that data was parsed
     let gr_log = well.logs.iter().find(|log| log.mnemonic == "GR").unwrap();
     assert!(!gr_log.data.is_empty());
@@ -56,7 +60,7 @@ fn test_las_v3_error_on_invalid_version() {
 
     let reader = LasV3Reader::open(temp_file.path()).unwrap();
     let result = reader.parse();
-    
+
     // Should still parse but may warn about version
     assert!(result.is_ok());
 }
@@ -66,7 +70,11 @@ fn test_las_v3_with_json_metadata() {
     // LAS 3.0 supports JSON-like metadata
     let mut temp_file = NamedTempFile::new().unwrap();
     writeln!(temp_file, "~VERSION INFORMATION").unwrap();
-    writeln!(temp_file, " VERS. 3.0 : CWLS LOG ASCII STANDARD -VERSION 3.0").unwrap();
+    writeln!(
+        temp_file,
+        " VERS. 3.0 : CWLS LOG ASCII STANDARD -VERSION 3.0"
+    )
+    .unwrap();
     writeln!(temp_file, "~WELL INFORMATION").unwrap();
     writeln!(temp_file, " WELL. TEST-WELL-JSON : Well with JSON metadata").unwrap();
     writeln!(temp_file, " API. 12345 : API Number").unwrap();

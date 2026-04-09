@@ -52,8 +52,10 @@ impl WellPanel {
                                     egui::Color32::GRAY
                                 };
 
-                                let symbol_rect =
-                                    ui.allocate_response(egui::vec2(20.0, 20.0), egui::Sense::click());
+                                let symbol_rect = ui.allocate_response(
+                                    egui::vec2(20.0, 20.0),
+                                    egui::Sense::click(),
+                                );
                                 ui.painter().rect_filled(symbol_rect.rect, 2.0, color);
 
                                 // Well name (selectable)

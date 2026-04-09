@@ -638,6 +638,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5133,6 +5142,7 @@ name = "seisly_app"
 version = "1.0.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "chrono",
  "eframe",
  "egui",
@@ -5257,11 +5267,14 @@ name = "seisly_io"
 version = "1.0.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "giga-segy-in",
  "giga-segy-out",
+ "log",
  "memmap2",
  "moka",
  "seisly_core",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror 1.0.69",
@@ -5329,21 +5342,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "seisly_py_worker"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "ndarray 0.16.1",
- "numpy",
- "pyo3",
- "seisly_core",
- "serde",
- "serde_json",
- "shared_memory",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "seisly_qi"
 version = "1.0.0"
 dependencies = [
@@ -5360,6 +5358,7 @@ version = "1.0.0"
 dependencies = [
  "bytemuck",
  "nalgebra",
+ "pollster 0.3.0",
  "seisly_compute",
  "seisly_core",
  "wgpu",

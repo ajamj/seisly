@@ -1,6 +1,4 @@
-use wgpu::{
-    include_wgsl, BindGroupLayout, Device, RenderPipeline, TextureFormat,
-};
+use wgpu::{include_wgsl, BindGroupLayout, Device, RenderPipeline, TextureFormat};
 
 /// Type of seismic slice being rendered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -185,7 +183,8 @@ mod tests {
         let instance = wgpu::Instance::default();
         let adapter = block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()));
         if let Some(adapter) = adapter {
-            let (device, _queue) = block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None)).unwrap();
+            let (device, _queue) =
+                block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None)).unwrap();
             let _renderer = SeismicRenderer::new(&device, wgpu::TextureFormat::Rgba8UnormSrgb);
         }
     }

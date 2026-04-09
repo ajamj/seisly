@@ -170,8 +170,8 @@ mod tests {
     fn test_rainbow_first_entry_is_red() {
         let data = ColormapManager::generate_preset_data(&ColormapPreset::Rainbow);
         assert_eq!(data[0], 255); // R
-        assert_eq!(data[1], 0);   // G
-        assert_eq!(data[2], 0);   // B
+        assert_eq!(data[1], 0); // G
+        assert_eq!(data[2], 0); // B
         assert_eq!(data[3], 255); // A
     }
 
@@ -184,9 +184,24 @@ mod tests {
         // Check that both are very close to white (within 3 of 255)
         for idx in [127, 128] {
             let offset = idx * 4;
-            assert!(data[offset] >= 252, "R at index {} should be ~255, got {}", idx, data[offset]);
-            assert!(data[offset + 1] >= 252, "G at index {} should be ~255, got {}", idx, data[offset + 1]);
-            assert!(data[offset + 2] >= 252, "B at index {} should be ~255, got {}", idx, data[offset + 2]);
+            assert!(
+                data[offset] >= 252,
+                "R at index {} should be ~255, got {}",
+                idx,
+                data[offset]
+            );
+            assert!(
+                data[offset + 1] >= 252,
+                "G at index {} should be ~255, got {}",
+                idx,
+                data[offset + 1]
+            );
+            assert!(
+                data[offset + 2] >= 252,
+                "B at index {} should be ~255, got {}",
+                idx,
+                data[offset + 2]
+            );
         }
     }
 
@@ -199,8 +214,8 @@ mod tests {
     #[test]
     fn test_bluewhitered_first_entry_is_blue() {
         let data = ColormapManager::generate_preset_data(&ColormapPreset::BlueWhiteRed);
-        assert_eq!(data[0], 0);   // R
-        assert_eq!(data[1], 0);   // G
+        assert_eq!(data[0], 0); // R
+        assert_eq!(data[1], 0); // G
         assert_eq!(data[2], 255); // B
         assert_eq!(data[3], 255); // A
     }
@@ -209,9 +224,9 @@ mod tests {
     fn test_bluewhitered_last_entry_is_red() {
         let data = ColormapManager::generate_preset_data(&ColormapPreset::BlueWhiteRed);
         let offset = 255 * 4;
-        assert_eq!(data[offset], 255);     // R
-        assert_eq!(data[offset + 1], 0);   // G
-        assert_eq!(data[offset + 2], 0);   // B
+        assert_eq!(data[offset], 255); // R
+        assert_eq!(data[offset + 1], 0); // G
+        assert_eq!(data[offset + 2], 0); // B
         assert_eq!(data[offset + 3], 255); // A
     }
 
@@ -220,7 +235,7 @@ mod tests {
         let data = ColormapManager::generate_preset_data(&ColormapPreset::Rainbow);
         let offset = 255 * 4;
         // Last entry should be close to violet (127, 0, 255)
-        assert_eq!(data[offset + 1], 0);   // G should be 0
+        assert_eq!(data[offset + 1], 0); // G should be 0
         assert_eq!(data[offset + 2], 255); // B should be 255
         assert_eq!(data[offset + 3], 255); // A should be 255
     }

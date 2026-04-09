@@ -15,7 +15,7 @@ impl DifferenceMap {
     /// Create difference map from time-lapse analysis
     pub fn from_timelapse(analysis: &TimeLapseAnalysis) -> Self {
         let diff = analysis.difference();
-        
+
         Self {
             inline_start: 0,
             inline_end: 100,
@@ -24,35 +24,40 @@ impl DifferenceMap {
             values: diff,
         }
     }
-    
+
     /// Get difference at specific location
     pub fn get(&self, il: usize, xl: usize) -> Option<f32> {
-        if il < self.inline_start || il > self.inline_end ||
-           xl < self.crossline_start || xl > self.crossline_end {
+        if il < self.inline_start
+            || il > self.inline_end
+            || xl < self.crossline_start
+            || xl > self.crossline_end
+        {
             return None;
         }
-        
-        let idx = (il - self.inline_start) * (self.crossline_end - self.crossline_start + 1) +
-                  (xl - self.crossline_start);
-        
+
+        let idx = (il - self.inline_start) * (self.crossline_end - self.crossline_start + 1)
+            + (xl - self.crossline_start);
+
         self.values.get(idx).copied()
     }
-    
+
     /// Compute map statistics
     pub fn statistics(&self) -> DifferenceStats {
         let n = self.values.len() as f32;
         let sum: f32 = self.values.iter().sum();
         let mean = sum / n;
-        
-        let variance = self.values.iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f32>() / n;
-        
+
+        let variance = self.values.iter().map(|x| (x - mean).powi(2)).sum::<f32>() / n;
+
         let std_dev = variance.sqrt();
-        
+
         let min = self.values.iter().cloned().fold(f32::INFINITY, f32::min);
-        let max = self.values.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
-        
+        let max = self
+            .values
+            .iter()
+            .cloned()
+            .fold(f32::NEG_INFINITY, f32::max);
+
         DifferenceStats {
             mean,
             std_dev,
@@ -82,11 +87,11 @@ impl AnomalyDetector {
     pub fn new(threshold: f32) -> Self {
         Self { threshold }
     }
-    
+
     /// Detect anomalies (values above threshold)
     pub fn detect(&self, map: &DifferenceMap) -> Vec<(usize, usize, f32)> {
         let mut anomalies = Vec::new();
-        
+
         for (idx, &value) in map.values.iter().enumerate() {
             if value.abs() > self.threshold {
                 let il = map.inline_start + idx / (map.crossline_end - map.crossline_start + 1);
@@ -94,10 +99,10 @@ impl AnomalyDetector {
                 anomalies.push((il, xl, value));
             }
         }
-        
+
         anomalies
     }
-    
+
     /// Classify anomaly type
     pub fn classify_anomaly(&self, value: f32) -> &'static str {
         if value > 0.0 {
@@ -122,9 +127,9 @@ mod tests {
             crossline_end: 1,
             values,
         };
-        
+
         let stats = map.statistics();
-        
+
         assert!((stats.mean - 3.0).abs() < 0.01);
         assert!(stats.std_dev > 0.0);
         assert!((stats.min - 1.0).abs() < 0.01);
@@ -141,20 +146,20 @@ mod tests {
             crossline_end: 0,
             values,
         };
-        
+
         let detector = AnomalyDetector::new(0.4);
         let anomalies = detector.detect(&map);
-        
+
         assert_eq!(anomalies.len(), 2); // 0.5 and -0.6
     }
 
     #[test]
     fn test_anomaly_classification() {
         let detector = AnomalyDetector::new(0.4);
-        
+
         let pos_class = detector.classify_anomaly(0.5);
         assert!(pos_class.contains("Hardening"));
-        
+
         let neg_class = detector.classify_anomaly(-0.5);
         assert!(neg_class.contains("Softening"));
     }

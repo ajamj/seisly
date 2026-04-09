@@ -1,8 +1,8 @@
-use seisly_ml::cnn::HorizonCNN;
-use seisly_ml::tracker::AutoTracker;
-use candle_core::{Device, DType};
+use candle_core::{DType, Device};
 use candle_nn::VarBuilder;
 use seisly_compute::seismic::InMemoryProvider;
+use seisly_ml::cnn::HorizonCNN;
+use seisly_ml::tracker::AutoTracker;
 
 #[test]
 fn test_tracker_initialization() {
@@ -67,7 +67,7 @@ fn test_tracker_full_volume_coverage() {
 
     // Test tracking from center - should cover entire volume
     let result = tracker.track(&provider, 2, 2, 5).unwrap();
-    
+
     // With BFS 4-connectivity on 5x5 grid, should get 25 points
     let vertex_count = result.meshes[0].vertices.len();
     assert_eq!(vertex_count, 25);

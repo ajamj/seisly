@@ -13,19 +13,21 @@ impl AvoAnalysis {
     pub fn new(angles: Vec<f32>, amplitudes: Vec<f32>) -> Self {
         Self { angles, amplitudes }
     }
-    
+
     /// AVO Gradient (slope of amplitude vs angle)
     /// Uses linear regression: gradient = (n*Σxy - Σx*Σy) / (n*Σx² - (Σx)²)
     pub fn gradient(&self) -> f32 {
         let n = self.angles.len() as f32;
         let sum_x = self.angles.iter().sum::<f32>();
         let sum_y = self.amplitudes.iter().sum::<f32>();
-        let sum_xy = self.angles.iter()
+        let sum_xy = self
+            .angles
+            .iter()
             .zip(self.amplitudes.iter())
             .map(|(x, y)| x * y)
             .sum::<f32>();
         let sum_x2 = self.angles.iter().map(|x| x * x).sum::<f32>();
-        
+
         let denominator = n * sum_x2 - sum_x * sum_x;
         if denominator.abs() < 1e-10 {
             0.0
@@ -33,17 +35,17 @@ impl AvoAnalysis {
             (n * sum_xy - sum_x * sum_y) / denominator
         }
     }
-    
+
     /// AVO Intercept (amplitude at zero offset)
     /// intercept = mean_y - gradient * mean_x
     pub fn intercept(&self) -> f32 {
         let gradient = self.gradient();
         let mean_x = self.angles.iter().sum::<f32>() / self.angles.len() as f32;
         let mean_y = self.amplitudes.iter().sum::<f32>() / self.amplitudes.len() as f32;
-        
+
         mean_y - gradient * mean_x
     }
-    
+
     /// AVO Product (Gradient × Intercept)
     /// Used for hydrocarbon detection
     pub fn avo_product(&self) -> f32 {
@@ -69,7 +71,7 @@ impl AvoAnalysis {
     pub fn classify(&self) -> AvoClass {
         let intercept = self.intercept();
         let gradient = self.gradient();
-        
+
         if intercept > 0.0 && gradient < 0.0 {
             AvoClass::Class1
         } else if intercept.abs() < 0.1 && gradient < 0.0 {
@@ -91,7 +93,7 @@ impl FluidFactor {
     pub fn compute(intercept: f32, gradient: f32, expected_gradient: f32) -> f32 {
         intercept - (expected_gradient * gradient)
     }
-    
+
     /// Compute fluid factor from Vp, Vs, and density
     pub fn from_elastic(vp: f32, vs: f32, rho: f32) -> f32 {
         // Simplified fluid factor
@@ -112,10 +114,10 @@ mod tests {
     fn test_avo_gradient_positive() {
         let angles = vec![0.0, 10.0, 20.0, 30.0];
         let amplitudes = vec![1.0, 1.5, 2.0, 2.5];
-        
+
         let avo = AvoAnalysis::new(angles, amplitudes);
         let gradient = avo.gradient();
-        
+
         assert!(gradient > 0.0, "Gradient should be positive");
     }
 
@@ -123,10 +125,10 @@ mod tests {
     fn test_avo_gradient_negative() {
         let angles = vec![0.0, 10.0, 20.0, 30.0];
         let amplitudes = vec![2.0, 1.5, 1.0, 0.5];
-        
+
         let avo = AvoAnalysis::new(angles, amplitudes);
         let gradient = avo.gradient();
-        
+
         assert!(gradient < 0.0, "Gradient should be negative");
     }
 
@@ -134,10 +136,10 @@ mod tests {
     fn test_avo_intercept() {
         let angles = vec![0.0, 10.0, 20.0, 30.0];
         let amplitudes = vec![1.0, 1.0, 1.0, 1.0];
-        
+
         let avo = AvoAnalysis::new(angles, amplitudes);
         let intercept = avo.intercept();
-        
+
         assert!((intercept - 1.0).abs() < 0.1, "Intercept should be ~1.0");
     }
 
@@ -145,10 +147,10 @@ mod tests {
     fn test_avo_class_1() {
         let angles = vec![0.0, 10.0, 20.0, 30.0];
         let amplitudes = vec![2.0, 1.5, 1.0, 0.5];
-        
+
         let avo = AvoAnalysis::new(angles, amplitudes);
         let class = avo.classify();
-        
+
         assert_eq!(class, AvoClass::Class1);
     }
 

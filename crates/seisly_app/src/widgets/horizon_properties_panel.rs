@@ -1,6 +1,6 @@
+use crate::interpretation::InterpretationState;
 use eframe::egui;
 use uuid::Uuid;
-use crate::interpretation::InterpretationState;
 
 pub struct HorizonPropertiesPanel {
     pub selected_horizon_id: Option<Uuid>,

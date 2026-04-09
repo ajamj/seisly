@@ -186,11 +186,11 @@ pub fn split_mesh_by_plane(mesh: &Mesh, plane: &Plane) -> (Mesh, Mesh) {
         neg_vertices.into_iter().map(|p| p.into()).collect(),
         neg_indices,
     );
-    
+
     // Compute normals for smooth shading on clipped surfaces
     pos_mesh.compute_normals();
     neg_mesh.compute_normals();
-    
+
     (pos_mesh, neg_mesh)
 }
 

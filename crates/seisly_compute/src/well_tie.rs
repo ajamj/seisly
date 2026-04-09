@@ -42,8 +42,8 @@ impl Default for TieParameters {
 /// Time-depth pair for well tie
 #[derive(Debug, Clone)]
 pub struct TimeDepthPair {
-    pub depth_md: f64,    // Measured depth (m)
-    pub twt: f64,         // Two-way time (ms)
+    pub depth_md: f64, // Measured depth (m)
+    pub twt: f64,      // Two-way time (ms)
 }
 
 /// Well-seismic tie result
@@ -80,10 +80,7 @@ impl WellTieEngine {
     /// WellTie with time-depth pairs at 10m intervals
     pub fn create_tie(&self, well: &Well) -> Result<WellTie, WellTieError> {
         // Get first log for depth range
-        let first_log = well
-            .logs
-            .first()
-            .ok_or(WellTieError::NoLogs)?;
+        let first_log = well.logs.first().ok_or(WellTieError::NoLogs)?;
 
         let min_depth = first_log.min_depth as f64;
         let max_depth = first_log.max_depth as f64;
@@ -96,7 +93,7 @@ impl WellTieEngine {
         while depth <= max_depth {
             // TWT = (2/k) * ln((v0 + k*depth) / v0) * 1000 (convert to ms)
             let twt = Self::depth_to_twt(depth, self.v0, self.k);
-            
+
             pairs.push(TimeDepthPair {
                 depth_md: depth,
                 twt,
@@ -160,24 +157,40 @@ mod tests {
         // For v0=2000, k=0.5, depth=1000m:
         // TWT = (2/0.5) * ln((2000 + 0.5*1000) / 2000) * 1000 = 892ms
         let twt = WellTieEngine::depth_to_twt(1000.0, 2000.0, 0.5);
-        assert!((twt - 892.0).abs() < 1.0, "Expected TWT ~892ms, got {}", twt);
+        assert!(
+            (twt - 892.0).abs() < 1.0,
+            "Expected TWT ~892ms, got {}",
+            twt
+        );
 
         // Back conversion
         let depth = WellTieEngine::twt_to_depth(twt, 2000.0, 0.5);
-        assert!((depth - 1000.0).abs() < 1.0, "Expected depth ~1000m, got {}", depth);
+        assert!(
+            (depth - 1000.0).abs() < 1.0,
+            "Expected depth ~1000m, got {}",
+            depth
+        );
     }
 
     #[test]
     fn test_zero_depth() {
         // At depth 0, TWT should be 0
         let twt = WellTieEngine::depth_to_twt(0.0, 2000.0, 0.5);
-        assert!(twt.abs() < 1e-10, "Expected TWT ~0ms at depth 0, got {}", twt);
+        assert!(
+            twt.abs() < 1e-10,
+            "Expected TWT ~0ms at depth 0, got {}",
+            twt
+        );
     }
 
     #[test]
     fn test_zero_twt() {
         // At TWT 0, depth should be 0
         let depth = WellTieEngine::twt_to_depth(0.0, 2000.0, 0.5);
-        assert!(depth.abs() < 1e-10, "Expected depth ~0m at TWT 0, got {}", depth);
+        assert!(
+            depth.abs() < 1e-10,
+            "Expected depth ~0m at TWT 0, got {}",
+            depth
+        );
     }
 }

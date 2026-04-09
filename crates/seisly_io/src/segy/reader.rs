@@ -5,12 +5,12 @@
 //! - memmap2: Zero-copy trace data access
 //! - Custom: Optimized I/O layer
 
+use crate::cache::BrickCache;
 use giga_segy_in::{SegyFile, SegySettings};
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 use thiserror::Error;
-use crate::cache::BrickCache;
 
 /// IO error type for SEG-Y operations
 #[derive(Error, Debug)]
@@ -37,7 +37,7 @@ impl SegyReader {
         let segy = SegyFile::open(file, settings)
             .map_err(|e| IoError::ParseError(format!("Failed to parse SEG-Y file: {}", e)))?;
 
-        Ok(Self { 
+        Ok(Self {
             segy,
             cache: Some(BrickCache::default()),
         })
@@ -79,13 +79,14 @@ impl SegyReader {
             }
         }
 
-        let trace = self.segy
-            .traces_iter()
-            .nth(index)
-            .ok_or_else(|| IoError::ParseError(format!("Trace index {} out of range", index)))?;
+        let trace =
+            self.segy.traces_iter().nth(index).ok_or_else(|| {
+                IoError::ParseError(format!("Trace index {} out of range", index))
+            })?;
 
         // Extract trace data as f32
-        let data = self.segy
+        let data = self
+            .segy
             .get_trace_data_as_f32_from_trace(&trace)
             .map_err(|e| IoError::ParseError(format!("Failed to read trace data: {}", e)))?;
 
