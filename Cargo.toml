@@ -19,8 +19,29 @@ members = [
   "crates/seisly_fwi",
   "crates/seisly_tracking",
   "crates/seisly_production",
-  "crates/seisly_py_worker",
   # Note: seisly_ai is Python-only (AI server), not a Rust crate
+]
+# Exclude seisly_py_worker from default workspace — requires Python dev libs
+# Build with: cargo build -p seisly_py_worker (local dev only)
+default-members = [
+  "crates/seisly_core",
+  "crates/seisly_crs",
+  "crates/seisly_storage",
+  "crates/seisly_io",
+  "crates/seisly_compute",
+  "crates/seisly_render",
+  "crates/seisly_cli",
+  "crates/seisly_app",
+  "crates/seisly_ml",
+  "crates/seisly_plugin",
+  "crates/seisly_attributes",
+  "crates/seisly_attributes_gpu",
+  "crates/seisly_qi",
+  "crates/seisly_4d",
+  "crates/seisly_ml_deep",
+  "crates/seisly_fwi",
+  "crates/seisly_tracking",
+  "crates/seisly_production",
 ]
 
 [workspace.package]
