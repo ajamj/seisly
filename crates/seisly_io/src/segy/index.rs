@@ -13,6 +13,8 @@ pub struct SegyIndex {
     pub format: u16,
     pub trace_count: usize,
     pub is_regular: bool,
+    pub inline_step: i32,
+    pub crossline_step: i32,
     // (inline, xline) -> trace_index
     pub trace_map: std::collections::HashMap<(i32, i32), usize>,
 }
@@ -51,6 +53,8 @@ mod tests {
             format: 5,
             trace_count: 1,
             is_regular: true,
+            inline_step: 1,
+            crossline_step: 1,
             trace_map,
         };
 

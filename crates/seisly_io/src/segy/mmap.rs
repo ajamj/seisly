@@ -1,8 +1,9 @@
 use anyhow::Result;
 use seisly_core::io::SafeMmap;
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
+
+use crate::segy::index::SegyIndex;
 
 pub struct MmappedSegy {
     mmap: SafeMmap,
@@ -10,14 +11,40 @@ pub struct MmappedSegy {
     pub sample_interval: f32,
     pub format: u16,
     pub trace_count: usize,
+    // Regular Grid Metadata
+    pub is_regular: bool,
+    pub inline_step: i32,
+    pub crossline_step: i32,
     // Index: (inline, xline) -> trace_index
-    index: HashMap<(i32, i32), usize>,
+    index: std::collections::HashMap<(i32, i32), usize>,
     pub inline_range: (i32, i32),
     pub crossline_range: (i32, i32),
 }
 
 impl MmappedSegy {
     pub fn new(path: &Path) -> Result<Self> {
+        // 1. Try to load sidecar index first
+        let index_path = path.with_extension("sfidx");
+        if let Ok(loaded_index) = SegyIndex::load(&index_path) {
+            log::info!("Loaded sidecar index from {:?}", index_path);
+            let file = File::open(path)?;
+            let mmap = SafeMmap::map(&file)?;
+            
+            return Ok(Self {
+                mmap,
+                sample_count: loaded_index.sample_count,
+                sample_interval: loaded_index.sample_interval,
+                format: loaded_index.format,
+                trace_count: loaded_index.trace_count,
+                is_regular: loaded_index.is_regular,
+                inline_step: loaded_index.inline_step,
+                crossline_step: loaded_index.crossline_step,
+                index: loaded_index.trace_map,
+                inline_range: loaded_index.inline_range,
+                crossline_range: loaded_index.crossline_range,
+            });
+        }
+
         let file = File::open(path)?;
         let mmap = SafeMmap::map(&file)?;
 
@@ -38,26 +65,75 @@ impl MmappedSegy {
         let remaining_size = mmap.len() - 3600;
         let trace_count = remaining_size / trace_size;
 
-        let mut index = HashMap::new();
+        let mut trace_map = std::collections::HashMap::new();
         let mut min_inline = i32::MAX;
         let mut max_inline = i32::MIN;
         let mut min_xline = i32::MAX;
         let mut max_xline = i32::MIN;
+        
+        let mut prev_iline: Option<i32> = None;
+        let mut prev_xline: Option<i32> = None;
+        let mut inline_steps = std::collections::HashSet::new();
+        let mut crossline_steps = std::collections::HashSet::new();
 
+        // Heuristic: Try to find which header locations actually vary
         for i in 0..trace_count {
             let offset = 3600 + (i * trace_size);
-
-            // Standard SEG-Y Inline/Crossline locations: 189 and 193 (0-based: 188 and 192)
-            let iline = mmap.get_i32_be(offset + 188).ok_or_else(|| anyhow::anyhow!("Failed to read inline at trace {}", i))?;
-            let xline = mmap.get_i32_be(offset + 192).ok_or_else(|| anyhow::anyhow!("Failed to read crossline at trace {}", i))?;
-
-            index.insert((iline, xline), i);
-
-            min_inline = min_inline.min(iline);
-            max_inline = max_inline.max(iline);
-            min_xline = min_xline.min(xline);
-            max_xline = max_xline.max(xline);
+            
+            // Standard check
+            let iline = mmap.get_i32_be(offset + 188).unwrap_or(0);
+            let xline = mmap.get_i32_be(offset + 192).unwrap_or(0);
+            
+            if iline != 0 || xline != 0 {
+                trace_map.insert((iline, xline), i);
+                min_inline = min_inline.min(iline);
+                max_inline = max_inline.max(iline);
+                min_xline = min_xline.min(xline);
+                max_xline = max_xline.max(xline);
+                
+                if let Some(prev) = prev_iline {
+                    let diff = (iline - prev).abs();
+                    if diff != 0 { inline_steps.insert(diff); }
+                }
+                if let Some(prev) = prev_xline {
+                    let diff = (xline - prev).abs();
+                    if diff != 0 { crossline_steps.insert(diff); }
+                }
+                prev_iline = Some(iline);
+                prev_xline = Some(xline);
+            }
         }
+
+        // If standard check failed, fallback to linear
+        if min_inline == i32::MAX {
+            min_inline = 0;
+            max_inline = 0;
+            min_xline = 0;
+            max_xline = trace_count as i32 - 1;
+            for i in 0..trace_count {
+                trace_map.insert((0, i as i32), i);
+            }
+        }
+
+        // Regularity check
+        let inline_step = inline_steps.into_iter().min().unwrap_or(1);
+        let crossline_step = crossline_steps.into_iter().min().unwrap_or(1);
+        let is_regular = trace_map.len() == trace_count;
+
+        // Save index for next time
+        let index = SegyIndex {
+            inline_range: (min_inline, max_inline),
+            crossline_range: (min_xline, max_xline),
+            sample_count,
+            sample_interval,
+            format,
+            trace_count,
+            is_regular,
+            inline_step,
+            crossline_step,
+            trace_map: trace_map.clone(),
+        };
+        let _ = index.save(&index_path);
 
         Ok(Self {
             mmap,
@@ -65,7 +141,10 @@ impl MmappedSegy {
             sample_interval,
             format,
             trace_count,
-            index,
+            is_regular,
+            inline_step,
+            crossline_step,
+            index: trace_map,
             inline_range: (min_inline, max_inline),
             crossline_range: (min_xline, max_xline),
         })
@@ -86,7 +165,6 @@ impl MmappedSegy {
             let val = if self.format == 5 {
                 self.mmap.get_f32_be(start)?
             } else if self.format == 1 {
-                // IBM Float placeholder - common in legacy SEG-Y
                 let bytes = self.mmap.get_u32_be(start)?;
                 ibm_to_ieee_f32(bytes)
             } else {
@@ -101,6 +179,24 @@ impl MmappedSegy {
     pub fn get_trace(&self, inline: i32, xline: i32) -> Option<Vec<f32>> {
         let index = *self.index.get(&(inline, xline))?;
         self.read_trace_data(index)
+    }
+}
+
+impl seisly_core::seismic::TraceProvider for MmappedSegy {
+    fn get_trace(&self, inline: i32, xline: i32) -> Option<Vec<f32>> {
+        self.get_trace(inline, xline)
+    }
+
+    fn inline_range(&self) -> (i32, i32) {
+        self.inline_range
+    }
+
+    fn crossline_range(&self) -> (i32, i32) {
+        self.crossline_range
+    }
+
+    fn sample_count(&self) -> usize {
+        self.sample_count
     }
 }
 
